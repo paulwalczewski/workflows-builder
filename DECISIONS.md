@@ -1,12 +1,39 @@
 # Decisions
 
 - Choosing ordered list of rules as workflow representation (not a graph e.g in react flow) - matches business mentioned business logic (combinations of conditions and outcomes), end result will be easier for users to navigate through;
+- Runtime shape - one shot evaluation, should match main requirements for checks of what user can do with their subscription; validation on client and server side (during user action);
+- We limit the max number of effects to just few;
+- Capability model - based on strings with scope included (e.g item.add, subscription.cancel);
+- Workflow has to be describable and readable in JSON schemas;
+- Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option
+- UI: clean nextjs routes, root which shows links to both portals (customers subscriptions and workflows builder);
+- We use JSON files for persistance.storage, not real db;
+
+
+# Deferred
+- Stateful workflows (add complexity and may be required for other business cases);
+- Workflow version history / workflow rollback;
+- Custom effects - e.g showing promo modal on Cancel subscription action; With current setup it should be doable through ui (e.g action hook + evaluation on click on cancel subscription);
+- Auth;
+- Importing workflow files in the builder (export stays);
+- Complex rule combinations: start with simple AND/OR logic instead of a fully flexible expression language;
+- Logical implication analysis for shadow detection (we only detect unconditional and identical-condition shadows);
+- Workflows to be presented as graphs (nodes + edges)? If workflows were to be long running over time and some better , but as above, this may depend on actual business cases; Atm did not do it'd add other problems and complexity;
+
+
+---
+NOTE: Below decisions/semantics etc are a result of work with agent (mainly through grilling during planning).
+---
+
+# Decisions
+
+- Choosing ordered list of rules as workflow representation (not a graph e.g in react flow) - matches business mentioned business logic (combinations of conditions and outcomes), end result will be easier for users to navigate through;
 - Runtime shape - one shot evaluation, should match main requirements for checks of what user can do with their subscription. The engine is pure and isomorphic. The server is the authority: it evaluates on portal render and again inside every action before mutating. The browser evaluates only for live previews in the builder;
 - We use JSON files for persistance.storage, not real db;
 - Effects are limited to three kinds (`capability.allow`, `capability.deny` with a reason, `limit.set`). The capability list is capped at ~8;
 - Capability model - based on strings with scope included (e.g item.add, subscription.cancel). Format `scope.action` in lowerCamel, checked by regex. Wildcards (`item.*`, `*`) only in effects, never in results;
 - Workflow has to be describable (savable + readable) in JSON schemas;
-- Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option to reset state back to fixtures (on the portal list, the builder list and the debug panel). Seeded workflows: Starter (published default, two rules) and Standard (draft, every example from the brief);
+- Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option to reset state back to fixtures: a "Reset data" button (portal list, builder list and debug panel, with a tooltip saying what it does) restores the seed and also clears `logs/runtime.jsonl`, so the log never mixes runs from before a reset. Seeded workflows: Starter (published default, two rules) and Standard (draft, every example from the brief);
 - UI: clean nextjs routes, root page which shows links to both portals (customers subscriptions and workflows builder); navbar with clean button links to customer portal (with subscriptions management demos) and merchant portal (with workflow builder);
 
 ## Rule semantics
