@@ -4,7 +4,7 @@
 - Runtime shape - one shot evaluation, should match main requirements for checks of what user can do with their subscription; validation on client and server side (during user action);
 - We limit the max number of effects to just few;
 - Capability model - based on strings with scope included (e.g item.add, subscription.cancel);
-- Workflow has to be describable and readable in JSON schemas;
+- Workflow has to be describable and readable in JSON schemas. Used standard pattern for workflows schemas (json-schema.org;
 - Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option
 - UI: clean nextjs routes, root which shows links to both portals (customers subscriptions and workflows builder);
 - We use JSON files for persistance.storage, not real db;
@@ -15,6 +15,7 @@
 - Stateful workflows (add complexity and may be required for other business cases);
 - Workflow version history / workflow rollback;
 - Custom effects - e.g showing promo modal on Cancel subscription action; With current setup it should be doable through ui (e.g action hook + evaluation on click on cancel subscription);
+- UI polish (I know it's bit convoluted right now, especially the builder part, but dropping due to time running out ;) );
 - Auth;
 - Importing workflow files in the builder (export stays);
 - Complex rule combinations: start with simple AND/OR logic instead of a fully flexible expression language;
