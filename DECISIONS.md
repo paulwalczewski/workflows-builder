@@ -6,7 +6,7 @@
 - Effects are limited to three kinds (`capability.allow`, `capability.deny` with a reason, `limit.set`). The capability list is capped at ~8;
 - Capability model - based on strings with scope included (e.g item.add, subscription.cancel). Format `scope.action` in lowerCamel, checked by regex. Wildcards (`item.*`, `*`) only in effects, never in results;
 - Workflow has to be describable (savable + readable) in JSON schemas;
-- Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option to reset state back to fixtures;
+- Fixtures has to be created - for spinning up Users, Base Workflows (~2); There should be option to reset state back to fixtures (on the portal list, the builder list and the debug panel). Seeded workflows: Starter (published default, two rules) and Standard (draft, every example from the brief);
 - UI: clean nextjs routes, root page which shows links to both portals (customers subscriptions and workflows builder); navbar with clean button links to customer portal (with subscriptions management demos) and merchant portal (with workflow builder);
 
 ## Rule semantics
@@ -19,15 +19,16 @@
 - Conditions: one group per rule, `all` or `any`, no nesting. A rule with no conditions always matches. A comparison against a missing (null) fact is false.
 - Conditions compare typed facts supplied by the host. The builder owns the generic operators per type (number: `eq/neq/gt/gte/lt/lte/between`, enum: `in/notIn`, boolean: `is`).
 - Item-scoped rules (any condition reads an item fact) run once per item and may only affect item capabilities and item limits. Other rules run once; their item effects apply to every item.
-- Host guards run after the workflow and block state-impossible capabilities (resume only when paused, reactivate only when canceled, etc). Merchants cannot grant past a guard. A guard-blocked capability is shown disabled with the guard's reason (e.g. "Only paused subscriptions can be resumed."), never hidden; only default deny hides. When a rule already denies with a reason, that reason is shown instead. The view and logs record the guard.
+- Host guards run after the workflow and block state-impossible capabilities (resume only when paused, reactivate only when canceled, etc). Merchants cannot grant past a guard. A guard-blocked capability is shown disabled with the guard's reason (e.g. "Only paused subscriptions can be resumed."), never hidden; only default deny hides. A guard's reason also wins over a rule's deny reason, because it states a fact about the subscription ("This subscription is already canceled."). The view and logs record the guard.
 - One trigger per workflow (`subscription.opened`). Each workflow is `draft` or `published`; exactly one published per trigger.
-- Builder diagnostics: errors block saving (schema, unknown ids, item-scoped rule touching a subscription capability, same-rule contradiction). Warnings never block: shadowed effect (a rule above with no conditions or the same conditions always decides first), possible conflict (a rule above answers differently and wins when both match; skipped when the two rules provably never match together, e.g. `currentCycle gte 3` vs `lte 1`), and a rule with no effects.
+- Builder diagnostics: errors block saving (schema, unknown ids, item-scoped rule touching a subscription capability, same-rule contradiction). Warnings never block: shadowed effect (a rule above with no conditions or the same conditions always decides first), possible conflict (a rule above answers differently and wins when both match; skipped when the two rules provably never match together, e.g. `currentCycle gte 3` vs `lte 1`, and skipped for capabilities either rule reaches only through a wildcard), and a rule with no effects.
+- Wildcards: "Everything" (`*`) stays, but the builder offers it only in Deny effects. Paired with an Allow in the same rule it is how "the only thing they can do is X" is written (named capabilities beat `*`), and it also covers capabilities added to the catalogue later, which a hand-written list would miss. Allowing everything has no sensible business use, so the builder does not offer it (the schema still accepts it). Wildcard overlaps no longer raise possible-conflict warnings, since broad rules overlap everything by design; named-vs-named conflicts still do.
 
 ## Builder
 
 - The builder is a separate package and knows nothing about subscriptions. The host passes a serialisable catalogue (triggers, facts, capabilities, limits, offered effects), preview subjects and a pure `resolveFacts(data, now)` function.
 - The engine interprets the three effect kinds. The catalogue decides which are offered and with what labels. Custom effect kinds would need an engine extension point (deferred).
-- Live preview: a "Preview as" customer dropdown and a "simulate now" input at the top. Shows each subscription's and item's capabilities and limits with the deciding rule, plus matched or not-matched badges and per-condition results on rule cards. Previews run in the browser and are not logged.
+- Live preview: a "Preview as" customer dropdown and a "simulate now" input at the top. Shows each subscription's and item's capabilities and limits with the deciding rule, plus matched or not-matched badges and per-condition results on rule cards. Previews run in the browser and are not logged. The preview shows the workflow's own answer (allowed, denied with reason, not decided) and limits; host guards and limit enforcement belong to the host and are shown only in the portal. A test proves the browser preview equals the server's evaluation for every fixture customer.
 
 ## Domain changes to the provided types
 
@@ -51,6 +52,7 @@
 - Stateful workflows (add complexity and may be required for other business cases);
 - Workflow version history / workflow rollback;
 - Auth;
+- Importing workflow files in the builder (export stays);
 - Complex rule combinations: start with simple AND/OR logic instead of a fully flexible expression language;
 - Custom effect kinds supplied by the host;
 - Logical implication analysis for shadow detection (we only detect unconditional and identical-condition shadows);
