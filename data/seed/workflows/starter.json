@@ -1,0 +1,65 @@
+{
+  "$schema": "../../schema/subscriptions.workflow.schema.json",
+  "schemaVersion": 1,
+  "id": "starter",
+  "name": "Starter",
+  "description": "A simple default: new customers contact support to cancel, everyone else can manage their subscription freely.",
+  "status": "published",
+  "trigger": "subscription.opened",
+  "rules": [
+    {
+      "id": "first-cycle-support",
+      "name": "First cycle: contact support",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "subscription.currentCycle",
+            "op": "lte",
+            "value": 1
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "subscription.cancel"
+          ],
+          "reason": "In your first cycle, please contact support to cancel."
+        }
+      ]
+    },
+    {
+      "id": "baseline",
+      "name": "Everyone else",
+      "when": {
+        "match": "all",
+        "conditions": []
+      },
+      "then": [
+        {
+          "type": "capability.allow",
+          "capabilities": [
+            "subscription.cancel",
+            "subscription.pause",
+            "subscription.resume",
+            "subscription.reactivate",
+            "item.*",
+            "payment.update"
+          ]
+        },
+        {
+          "type": "limit.set",
+          "limit": "subscription.maxItems",
+          "value": 5
+        },
+        {
+          "type": "limit.set",
+          "limit": "item.maxQuantity",
+          "value": 10
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,676 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflows.local/subscriptions.workflow.schema.json",
+  "title": "Workflow",
+  "description": "An ordered list of rules, read top to bottom. For each capability and limit, the highest matching rule that mentions it decides.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "status",
+    "trigger",
+    "rules"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "published"
+      ]
+    },
+    "trigger": {
+      "enum": [
+        "subscription.opened"
+      ]
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/rule"
+      }
+    }
+  },
+  "definitions": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "when",
+        "then"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/when"
+        },
+        "then": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/effect"
+          }
+        }
+      }
+    },
+    "when": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match",
+        "conditions"
+      ],
+      "properties": {
+        "match": {
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          }
+        }
+      }
+    },
+    "condition": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "customer.tier"
+            },
+            "op": {
+              "enum": [
+                "in",
+                "notIn"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "standard",
+                  "pro"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.status"
+            },
+            "op": {
+              "enum": [
+                "in",
+                "notIn"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "active",
+                  "paused",
+                  "canceled",
+                  "failed"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.currentCycle"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.currentCycle"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.monthlySpend"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.monthlySpend"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.daysUntilRenewal"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.daysUntilRenewal"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.itemCount"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.itemCount"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "subscription.billingInterval"
+            },
+            "op": {
+              "enum": [
+                "in",
+                "notIn"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.quantity"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.quantity"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.unitPrice"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.unitPrice"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.totalPrice"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "neq",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "fact": {
+              "const": "item.totalPrice"
+            },
+            "op": {
+              "enum": [
+                "between"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      ]
+    },
+    "capabilityList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "*",
+          "item.*",
+          "payment.*",
+          "subscription.*",
+          "subscription.cancel",
+          "subscription.pause",
+          "subscription.resume",
+          "subscription.reactivate",
+          "item.add",
+          "payment.update",
+          "item.remove",
+          "item.updateQuantity"
+        ]
+      }
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "capabilities"
+          ],
+          "properties": {
+            "type": {
+              "const": "capability.allow"
+            },
+            "capabilities": {
+              "$ref": "#/definitions/capabilityList"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "capabilities",
+            "reason"
+          ],
+          "properties": {
+            "type": {
+              "const": "capability.deny"
+            },
+            "capabilities": {
+              "$ref": "#/definitions/capabilityList"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "limit",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "limit.set"
+            },
+            "limit": {
+              "enum": [
+                "subscription.maxItems",
+                "item.maxQuantity"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

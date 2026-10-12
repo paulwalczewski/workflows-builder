@@ -1,0 +1,111 @@
+[
+  {
+    "id": "anna-pantry",
+    "customerId": "anna",
+    "status": "active",
+    "currentCycle": 5,
+    "nextBillingInDays": 12,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Visa", "last4": "4242" },
+    "items": [
+      { "id": "anna-pantry-oil", "productId": "olive-oil", "quantity": 5 },
+      { "id": "anna-pantry-coffee", "productId": "single-origin", "quantity": 4 },
+      { "id": "anna-pantry-granola", "productId": "granola", "quantity": 4 }
+    ]
+  },
+  {
+    "id": "anna-coffee",
+    "customerId": "anna",
+    "status": "active",
+    "currentCycle": 4,
+    "nextBillingInDays": 6,
+    "billingPolicy": { "interval": "week", "intervalCount": 2 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Visa", "last4": "4242" },
+    "items": [
+      { "id": "anna-coffee-blend", "productId": "house-coffee", "quantity": 2 },
+      { "id": "anna-coffee-milk", "productId": "oat-milk", "quantity": 2 }
+    ]
+  },
+  {
+    "id": "ben-coffee",
+    "customerId": "ben",
+    "status": "active",
+    "currentCycle": 1,
+    "nextBillingInDays": 20,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Mastercard", "last4": "5454" },
+    "items": [
+      { "id": "ben-coffee-blend", "productId": "house-coffee", "quantity": 2 },
+      { "id": "ben-coffee-chocolate", "productId": "chocolate", "quantity": 3 }
+    ]
+  },
+  {
+    "id": "ben-tea",
+    "customerId": "ben",
+    "status": "canceled",
+    "currentCycle": 2,
+    "nextBillingInDays": null,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Mastercard", "last4": "5454" },
+    "items": [{ "id": "ben-tea-green", "productId": "green-tea", "quantity": 1 }]
+  },
+  {
+    "id": "carla-tea",
+    "customerId": "carla",
+    "status": "failed",
+    "currentCycle": 3,
+    "nextBillingInDays": 1,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Visa", "last4": "0341" },
+    "items": [
+      { "id": "carla-tea-green", "productId": "green-tea", "quantity": 2 },
+      { "id": "carla-tea-milk", "productId": "oat-milk", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "dan-box",
+    "customerId": "dan",
+    "status": "active",
+    "currentCycle": 6,
+    "nextBillingInDays": 1,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Amex", "last4": "1005" },
+    "items": [
+      { "id": "dan-box-coffee", "productId": "house-coffee", "quantity": 3 },
+      { "id": "dan-box-granola", "productId": "granola", "quantity": 2 },
+      { "id": "dan-box-chocolate", "productId": "chocolate", "quantity": 2 }
+    ]
+  },
+  {
+    "id": "dan-snacks",
+    "customerId": "dan",
+    "status": "paused",
+    "currentCycle": 3,
+    "nextBillingInDays": null,
+    "billingPolicy": { "interval": "week", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Amex", "last4": "1005" },
+    "items": [{ "id": "dan-snacks-chocolate", "productId": "chocolate", "quantity": 2 }]
+  },
+  {
+    "id": "eve-deli",
+    "customerId": "eve",
+    "status": "active",
+    "currentCycle": 8,
+    "nextBillingInDays": 9,
+    "billingPolicy": { "interval": "month", "intervalCount": 1 },
+    "currencyCode": "EUR",
+    "paymentMethod": { "brand": "Visa", "last4": "8810" },
+    "items": [
+      { "id": "eve-deli-cheese", "productId": "cheese-box", "quantity": 1 },
+      { "id": "eve-deli-oil", "productId": "olive-oil", "quantity": 2 },
+      { "id": "eve-deli-coffee", "productId": "single-origin", "quantity": 2 }
+    ]
+  }
+]

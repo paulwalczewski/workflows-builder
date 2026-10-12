@@ -1,0 +1,11 @@
+[
+  {"id": "house-coffee", "title": "House Coffee Blend", "unitPrice": 1200, "currencyCode": "EUR"},
+  {"id": "single-origin", "title": "Single Origin Coffee", "unitPrice": 1800, "currencyCode": "EUR"},
+  {"id": "green-tea", "title": "Green Tea Selection", "unitPrice": 950, "currencyCode": "EUR"},
+  {"id": "oat-milk", "title": "Oat Milk", "unitPrice": 300, "currencyCode": "EUR"},
+  {"id": "granola", "title": "Maple Granola", "unitPrice": 750, "currencyCode": "EUR"},
+  {"id": "chocolate", "title": "Dark Chocolate Bars", "unitPrice": 600, "currencyCode": "EUR"},
+  {"id": "olive-oil", "title": "Cold-Pressed Olive Oil", "unitPrice": 2400, "currencyCode": "EUR"},
+  {"id": "cheese-box", "title": "Artisan Cheese Box", "unitPrice": 6000, "currencyCode": "EUR"},
+  {"id": "reserve-wine", "title": "Reserve Red Wine", "unitPrice": 5500, "currencyCode": "EUR"}
+]

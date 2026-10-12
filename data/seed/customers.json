@@ -1,0 +1,7 @@
+[
+  { "id": "anna", "displayName": "Anna Kowalska", "tier": "standard" },
+  { "id": "ben", "displayName": "Ben Okafor", "tier": "standard" },
+  { "id": "carla", "displayName": "Carla Ruiz", "tier": "standard" },
+  { "id": "dan", "displayName": "Dan Novak", "tier": "standard" },
+  { "id": "eve", "displayName": "Eve Laurent", "tier": "pro" }
+]

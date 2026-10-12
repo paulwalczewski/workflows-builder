@@ -1,0 +1,203 @@
+{
+  "$schema": "../../schema/subscriptions.workflow.schema.json",
+  "schemaVersion": 1,
+  "id": "standard",
+  "name": "Standard",
+  "description": "Everyday rules: lockdown on failed payments, a pre-renewal item lock, loyalty-based cancellation and Pro perks.",
+  "status": "draft",
+  "trigger": "subscription.opened",
+  "rules": [
+    {
+      "id": "payment-failed",
+      "name": "Payment failed: only payment update",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "subscription.status",
+            "op": "in",
+            "value": [
+              "failed"
+            ]
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.allow",
+          "capabilities": [
+            "payment.update"
+          ]
+        },
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "*"
+          ],
+          "reason": "Your last payment failed. Update your payment method to continue."
+        }
+      ]
+    },
+    {
+      "id": "renewal-lock",
+      "name": "Lock item changes before renewal",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "subscription.daysUntilRenewal",
+            "op": "lte",
+            "value": 2
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "item.*"
+          ],
+          "reason": "Item changes are locked in the 2 days before renewal, so the right box ships."
+        }
+      ]
+    },
+    {
+      "id": "loyal-can-cancel",
+      "name": "Loyal customers can cancel",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "subscription.currentCycle",
+            "op": "gte",
+            "value": 3
+          },
+          {
+            "fact": "subscription.monthlySpend",
+            "op": "gte",
+            "value": 20000
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.allow",
+          "capabilities": [
+            "subscription.cancel"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "first-cycle-support",
+      "name": "First cycle: contact support",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "subscription.currentCycle",
+            "op": "lte",
+            "value": 1
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "subscription.cancel"
+          ],
+          "reason": "In your first cycle, please contact support to cancel."
+        }
+      ]
+    },
+    {
+      "id": "pro-perks",
+      "name": "Pro perks",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "customer.tier",
+            "op": "in",
+            "value": [
+              "pro"
+            ]
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.allow",
+          "capabilities": [
+            "subscription.pause"
+          ]
+        },
+        {
+          "type": "limit.set",
+          "limit": "subscription.maxItems",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "id": "premium-items-stay",
+      "name": "Premium items stay",
+      "when": {
+        "match": "all",
+        "conditions": [
+          {
+            "fact": "item.unitPrice",
+            "op": "gt",
+            "value": 5000
+          }
+        ]
+      },
+      "then": [
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "item.remove"
+          ],
+          "reason": "Premium items can only be removed by our support team."
+        }
+      ]
+    },
+    {
+      "id": "baseline",
+      "name": "Baseline",
+      "when": {
+        "match": "all",
+        "conditions": []
+      },
+      "then": [
+        {
+          "type": "capability.deny",
+          "capabilities": [
+            "subscription.cancel"
+          ],
+          "reason": "Please contact support to cancel."
+        },
+        {
+          "type": "capability.allow",
+          "capabilities": [
+            "subscription.resume",
+            "subscription.reactivate",
+            "item.*",
+            "payment.update"
+          ]
+        },
+        {
+          "type": "limit.set",
+          "limit": "subscription.maxItems",
+          "value": 4
+        },
+        {
+          "type": "limit.set",
+          "limit": "item.maxQuantity",
+          "value": 5
+        }
+      ]
+    }
+  ]
+}
