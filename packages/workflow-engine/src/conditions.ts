@@ -100,3 +100,14 @@ export function testWhen(
       : conditions.some((c) => c.pass);
   return { matched, conditions };
 }
+
+/**
+ * "1 cycle", "3 cycles": a single-word plural unit loses its "s" for exactly
+ * one. Longer units ("per month") are left alone.
+ */
+export function withUnit(shown: string, value: number, unit?: string): string {
+  if (!unit) return shown;
+  const singular =
+    Math.abs(value) === 1 && /^[a-z]+s$/i.test(unit) ? unit.slice(0, -1) : unit;
+  return `${shown} ${singular}`;
+}

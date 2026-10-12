@@ -80,6 +80,40 @@ describe("generic shape", () => {
   });
 });
 
+describe("readable schema errors", () => {
+  it("reports one error for an empty deny reason, on the effect, in plain words", () => {
+    const diagnostics = validateWorkflowShape(
+      workflow([rule([], [allow("box.close"), deny("", "box.pause")])]),
+    );
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: "schema",
+        ruleIndex: 0,
+        effectIndex: 1,
+        message: "Write the reason the customer will see.",
+      }),
+    ]);
+  });
+
+  it("explains an effect with no capabilities", () => {
+    const [d] = validateWorkflowShape(workflow([rule([], [allow()])]));
+    expect(d).toMatchObject({
+      effectIndex: 0,
+      message: "Choose at least one capability.",
+    });
+  });
+
+  it("still flags an effect of unknown type once", () => {
+    const diagnostics = validateWorkflowShape(
+      workflow([rule([], [{ type: "capability.maybe" } as never])]),
+    );
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(new Set(diagnostics.map((d) => d.path)).size).toBe(
+      diagnostics.length,
+    );
+  });
+});
+
 describe("catalogue schema", () => {
   it("accepts what the catalogue allows", () => {
     expect(validateAgainstCatalogue(valid, catalogue)).toEqual([]);

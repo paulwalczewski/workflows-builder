@@ -14,6 +14,7 @@ export {
   OPERATORS_BY_TYPE,
   testCondition,
   testWhen,
+  withUnit,
 } from "./conditions";
 export { type EvaluateArgs, evaluate } from "./evaluate";
 export { buildCatalogueSchema } from "./schema/catalogue-schema";

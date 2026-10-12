@@ -17,7 +17,7 @@ export function buildCatalogueSchema(
   catalogue: Catalogue,
   id = "https://workflows.local/catalogue.workflow.schema.json",
 ): JsonSchema {
-  const schema = structuredClone(workflowSchema) as unknown as {
+  const schema = JSON.parse(JSON.stringify(workflowSchema)) as unknown as {
     $id: string;
     properties: Record<string, JsonSchema>;
     definitions: Record<string, JsonSchema>;

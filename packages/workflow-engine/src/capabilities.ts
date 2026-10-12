@@ -69,6 +69,8 @@ export interface CapabilityVerdict {
   allowed: boolean;
   reason?: string;
   effectIndex: number;
+  /** True when the rule reached this capability through `*` or `scope.*`. */
+  viaWildcard: boolean;
 }
 
 /**
@@ -79,7 +81,10 @@ export function ruleVerdicts(
   rule: Rule,
   capabilities: readonly string[],
 ): Map<string, CapabilityVerdict> {
-  const best = new Map<string, CapabilityVerdict & { specificity: number }>();
+  const best = new Map<
+    string,
+    Omit<CapabilityVerdict, "viaWildcard"> & { specificity: number }
+  >();
   rule.then.forEach((effect, effectIndex) => {
     if (effect.type === "limit.set") return;
     const allowed = effect.type === "capability.allow";
@@ -104,12 +109,17 @@ export function ruleVerdicts(
     }
   });
   const verdicts = new Map<string, CapabilityVerdict>();
-  for (const [capability, { specificity: _, ...verdict }] of best) {
+  for (const [capability, { specificity: level, ...verdict }] of best) {
+    const viaWildcard = level < 2;
     verdicts.set(
       capability,
       verdict.reason === undefined
-        ? { allowed: verdict.allowed, effectIndex: verdict.effectIndex }
-        : verdict,
+        ? {
+            allowed: verdict.allowed,
+            effectIndex: verdict.effectIndex,
+            viaWildcard,
+          }
+        : { ...verdict, viaWildcard },
     );
   }
   return verdicts;

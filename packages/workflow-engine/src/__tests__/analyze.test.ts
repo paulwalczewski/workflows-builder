@@ -276,16 +276,34 @@ describe("rule order", () => {
     ).toEqual([]);
   });
 
-  it("sees a per-child rule above a baseline as a possible conflict on child capabilities", () => {
+  it("sees a per-child rule above a baseline as a possible conflict when both name the capability", () => {
     const diagnostics = check(
       rule(
         [{ fact: "line.price", op: "gt", value: 50 }],
         [deny("Stays", "line.remove")],
       ),
-      rule([], [allow("line.*")]),
+      rule([], [allow("line.remove")]),
     );
     expect(codes(diagnostics)).toEqual(["warning:possible-conflict@1"]);
     expect(diagnostics[0].message).toContain('"line.remove"');
+  });
+
+  it("stays quiet about capabilities reached only through a wildcard", () => {
+    // A lockdown ("deny everything") above, a broad Baseline below: both
+    // overlap everything by design.
+    expect(
+      check(
+        rule(
+          [{ fact: "box.flagged", op: "is", value: true }],
+          [allow("box.pause"), deny("Locked", "*")],
+        ),
+        rule(
+          [{ fact: "line.price", op: "gt", value: 50 }],
+          [deny("Stays", "line.remove")],
+        ),
+        rule([], [allow("line.*", "box.close")]),
+      ),
+    ).toEqual([]);
   });
 
   it("compares limits by value", () => {

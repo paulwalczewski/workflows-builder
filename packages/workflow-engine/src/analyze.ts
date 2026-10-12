@@ -233,6 +233,8 @@ interface Touch {
   key: string;
   verdict: string;
   effectIndex: number;
+  /** Reached through `*` or `scope.*` rather than named. */
+  broad: boolean;
 }
 
 /** What a rule decides, as comparable keys, over the targets its scope reaches. */
@@ -247,6 +249,7 @@ function touches(rule: Rule, scope: Scope, catalogue: Catalogue): Touch[] {
         key: `capability:${capability}`,
         verdict: v.allowed ? "allows" : "denies",
         effectIndex: v.effectIndex,
+        broad: v.viaWildcard,
       });
     }
     for (const [limit, v] of ruleLimits(rule, limitIds(catalogue, target))) {
@@ -254,6 +257,7 @@ function touches(rule: Rule, scope: Scope, catalogue: Catalogue): Touch[] {
         key: `limit:${limit}`,
         verdict: `sets ${v.value}`,
         effectIndex: v.effectIndex,
+        broad: false,
       });
     }
   }
@@ -265,7 +269,9 @@ function touches(rule: Rule, scope: Scope, catalogue: Catalogue): Touch[] {
  * because it has no conditions or the same conditions. Possible conflict: a
  * rule above gives a different answer and wins whenever both match. Rules that
  * can never match together (e.g. "cycles at least 3" and "cycles at most 1")
- * are left alone.
+ * are left alone, and so are capabilities either rule reaches only through a
+ * wildcard: a broad lockdown ("deny everything") or a broad Baseline ("allow
+ * item.*") overlaps everything by design, so warning about it is noise.
  */
 function orderDiagnostics(
   workflow: Workflow,
@@ -305,6 +311,8 @@ function orderDiagnostics(
         }
         if (
           theirs.verdict !== touch.verdict &&
+          !theirs.broad &&
+          !touch.broad &&
           !neverBothMatch(upper.rule.when, lower.rule.when)
         ) {
           conflicts.set(i, [...(conflicts.get(i) ?? []), touch.key]);

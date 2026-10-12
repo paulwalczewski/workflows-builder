@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { withUnit } from "../conditions";
 import { evaluate } from "../evaluate";
 import {
   allow,
@@ -412,5 +413,14 @@ describe("purity", () => {
     expect(a).toEqual(b);
     expect(JSON.stringify({ wf, facts, catalogue })).toBe(frozen);
     expect(a.workflowId).toBe("test");
+  });
+});
+
+describe("withUnit", () => {
+  it("makes single-word plural units singular for exactly one", () => {
+    expect(withUnit("1", 1, "cycles")).toBe("1 cycle");
+    expect(withUnit("5", 5, "cycles")).toBe("5 cycles");
+    expect(withUnit("1", 1, "per month")).toBe("1 per month");
+    expect(withUnit("2", 2)).toBe("2");
   });
 });
