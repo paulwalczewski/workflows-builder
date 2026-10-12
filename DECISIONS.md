@@ -11,6 +11,7 @@
 
 
 # Deferred
+
 - Stateful workflows (add complexity and may be required for other business cases);
 - Workflow version history / workflow rollback;
 - Custom effects - e.g showing promo modal on Cancel subscription action; With current setup it should be doable through ui (e.g action hook + evaluation on click on cancel subscription);

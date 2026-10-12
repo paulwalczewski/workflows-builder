@@ -337,7 +337,7 @@ export class WorkflowInUseError extends Error {}
 
 /**
  * Deletes a draft. The published workflow cannot be deleted: the portal
- * would have nothing to run. Reset fixtures brings deleted seeds back.
+ * would have nothing to run. Reset data brings deleted seeds back.
  */
 export async function deleteWorkflow(id: string): Promise<void> {
   await ensureState();

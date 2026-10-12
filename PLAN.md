@@ -33,7 +33,7 @@ src/
     page.tsx                links to both
     portal/page.tsx         customer picker
     portal/[customerId]/page.tsx   subscriptions + collapsed debug panel
-    builder/page.tsx        workflow list (new, open, publish, duplicate, export, delete, reset fixtures)
+    builder/page.tsx        workflow list (new, open, publish, duplicate, export, delete, reset data)
     builder/[workflowId]/page.tsx  + BuilderClient.tsx ("use client" wrapper passing resolveFacts)
 data/seed/                  customers.json, products.json, subscriptions.json, workflows/*.json
 data/state/                 gitignored
@@ -140,7 +140,7 @@ Engine terms are generic (`subject`/`child`). The host maps subscription to subj
   - Denied with reason, guard or limit: disabled, with the reason in a tooltip (a focusable wrapper, so keyboard users get it too).
   - Denied by default: hidden.
 - Server action `submitAction(subscriptionId, action, now?)` (src/app/portal/actions.ts) parses untrusted input and calls `performAction({ subscriptionId, action }, now)` (src/server/perform.ts), which inside the write queue re-runs the evaluation for the stored subscription, checks decision + guard + limits, applies the change (recomputing `totalPrice`), writes, and logs `action` with its outcome; then `refresh()`. Refused and invalid attempts return the reason and are logged too.
-- Debug panel (collapsed by default, a side column next to the subscriptions on wide screens, stacked below on narrow ones): `runId`, workflow name, facts table, rule list with matched badges and per-condition actual vs expected, per-capability decider + overridden effects, guard blocks, limits. Includes a "simulate now" input and a "Reset fixtures" button.
+- Debug panel (collapsed by default, a side column next to the subscriptions on wide screens, stacked below on narrow ones): `runId`, workflow name, facts table, rule list with matched badges and per-condition actual vs expected, per-capability decider + overridden effects, guard blocks, limits. Includes a "simulate now" input and a "Reset data" button (restores the seed and clears the runtime log, explained in a tooltip).
 - Tests: action denies when not allowed (temp `DATA_DIR`), action succeeds and log line is written.
 
 ### 4. Builder package
@@ -152,7 +152,7 @@ Engine terms are generic (`subject`/`child`). The host maps subscription to subj
 - Tests (RTL): build a rule from scratch, emitted JSON passes `validate`, preview updates on subject switch, diagnostics render for a shadowed rule.
 
 ### 5. Builder host pages
-- `/builder`: published first. The whole card opens the workflow; a menu holds Open, Publish (drafts), Duplicate, Export JSON and Delete (drafts only, confirmed inline). New workflow (starts with a Baseline rule) and Reset fixtures sit above the list. No import for now.
+- `/builder`: published first. The whole card opens the workflow; a menu holds Open, Publish (drafts), Duplicate, Export JSON and Delete (drafts only, confirmed inline). New workflow (starts with a Baseline rule) and Reset data sit above the list. No import for now.
 - `/builder/[workflowId]`: `BuilderClient` wraps the package with the catalogue, customers from state as preview subjects, `resolveFacts`. Save button runs `validate` + `analyze` on the server (server action) before writing; errors block, warnings do not.
 - Round-trip test: load Standard, save untouched, file unchanged; edit in builder, save, `runForSubscription` reflects it.
 

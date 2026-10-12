@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { subscriptionTitle } from "@/catalogue/format";
-import { ResetFixturesButton } from "@/components/portal/ResetFixturesButton";
+import { ResetDataButton } from "@/components/portal/ResetDataButton";
 import { listCustomers, listSubscriptions } from "@/server/store";
 
 export default function PortalPage() {
@@ -19,7 +19,7 @@ export default function PortalPage() {
             this demo.
           </p>
         </div>
-        <ResetFixturesButton />
+        <ResetDataButton />
       </div>
       <Suspense fallback={<p className="text-muted">Loading customers…</p>}>
         <CustomerList />

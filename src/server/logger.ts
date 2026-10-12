@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { EvaluationInput, EvaluationResult } from "@wb/workflow-engine";
 import type { CapabilityView, SubscriptionView } from "@/catalogue/guards";
@@ -51,6 +51,11 @@ export async function writeLog(entry: LogEntry): Promise<void> {
   const file = logFile();
   await mkdir(dirname(file), { recursive: true });
   await appendFile(file, `${JSON.stringify(entry)}\n`);
+}
+
+/** Empties the runtime log, e.g. when the data is reset to the seed. */
+export async function clearLog(): Promise<void> {
+  await rm(logFile(), { force: true });
 }
 
 /** The most recent entries, newest first, optionally for one subscription. */

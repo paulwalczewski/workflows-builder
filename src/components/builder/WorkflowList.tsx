@@ -11,7 +11,7 @@ import {
   duplicateWorkflowAction,
   publishWorkflowAction,
 } from "@/app/builder/actions";
-import { ResetFixturesButton } from "@/components/portal/ResetFixturesButton";
+import { ResetDataButton } from "@/components/portal/ResetDataButton";
 import type { BrokenWorkflowFile } from "@/server/store";
 import { downloadWorkflow } from "./download";
 
@@ -65,7 +65,7 @@ export function WorkflowList({ workflows, broken }: Props) {
         >
           New workflow
         </Button>
-        <ResetFixturesButton size="md" />
+        <ResetDataButton size="md" />
       </div>
 
       {error && (
@@ -170,8 +170,8 @@ export function WorkflowList({ workflows, broken }: Props) {
                 {confirmDelete === workflow.id && (
                   <Card.Footer className="relative z-10 flex flex-wrap items-center gap-2 rounded-2xl bg-danger-soft p-3">
                     <span className="text-sm text-danger-soft-foreground">
-                      Delete "{workflow.name}"? Reset fixtures brings back
-                      seeded workflows only.
+                      Delete "{workflow.name}"? Reset data brings back seeded
+                      workflows only.
                     </span>
                     <Button
                       size="sm"

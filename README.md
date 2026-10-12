@@ -16,7 +16,7 @@ pnpm lint
 pnpm typecheck
 ```
 
-State lives in JSON files. `data/seed/` is committed and never written. `data/state/` is created from it on first use and can be restored with **Reset fixtures** (portal list or debug panel). Every evaluation and every action attempt is appended to `logs/runtime.jsonl`.
+State lives in JSON files. `data/seed/` is committed and never written. `data/state/` is created from it on first use and can be restored with **Reset data** (portal list, builder list or debug panel), which also clears the log. Every evaluation and every action attempt is appended to `logs/runtime.jsonl`.
 
 ## How it fits together
 
@@ -46,4 +46,4 @@ Two workflows are seeded. **Starter** (published, the default) has two rules: fi
 2. `tail -n 4 logs/runtime.jsonl`: both runs, same `workflowId`, different decisions.
 3. Go to `/builder`, open **Standard** and preview as Carla, Dan or Eve: lockdown, renewal lock, Pro perks. Edit a rule and watch the preview and JSON change. Then open its menu on the list (or the editor's **Publish**) to publish it.
 4. Back in the portal under Standard: `/portal/carla` can only update the payment method (do it, and everything unlocks); `/portal/dan` has item changes locked a day before renewal; on `/portal/anna`, open the debug panel and press **+7 days**, then **+1 day** three times to watch her pantry lock two days before it renews.
-5. **Reset fixtures** (portal list, builder list or debug panel) to start over.
+5. **Reset data** (portal list, builder list or debug panel) to start over. It restores the seed and clears the runtime log.

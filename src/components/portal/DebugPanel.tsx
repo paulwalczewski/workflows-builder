@@ -14,7 +14,7 @@ import {
   subscriptionTitle,
 } from "@/catalogue/format";
 import type { CapabilityView } from "@/catalogue/guards";
-import { ResetFixturesButton } from "./ResetFixturesButton";
+import { ResetDataButton } from "./ResetDataButton";
 import { SimulateNow } from "./SimulateNow";
 import type { PortalRun } from "./types";
 
@@ -45,7 +45,7 @@ export function DebugPanel({
           <span className="text-muted">
             Every run is appended to <code>logs/runtime.jsonl</code>.
           </span>
-          <ResetFixturesButton />
+          <ResetDataButton />
         </div>
       </div>
 

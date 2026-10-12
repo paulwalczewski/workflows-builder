@@ -25,14 +25,14 @@ The main agent's message gives: the round number, the PLAN.md phase(s) in scope,
    Done when every bullet has a status with evidence.
 4. **Run the checks.** `pnpm lint`, `pnpm typecheck`, `pnpm test`. In the final round also `pnpm build`. Quote failing output verbatim. Done when all have run.
 5. **Drive the app in Chrome** whenever the scope touches UI or the server. Load the `claude-in-chrome` skill first and follow it (one ToolSearch for the tools, fresh tab, avoid anything that opens a browser dialog). Confirm the dev server answers with `curl` first; if it is down, record a blocker and skip this step.
-   - Start from known state: press "Reset fixtures" (or report its absence).
+   - Start from known state: press "Reset data" (or report its absence).
    - Walk the PLAN.md seed table: for each customer open `/portal/<id>`, and check each capability shows as enabled, disabled with the expected reason, or hidden, plus limits.
    - Attempt one allowed and one denied action per customer where the UI allows it; the denied path can be exercised by calling the server action after changing state (e.g. set `?now=` into the lock window and retry). Confirm `logs/runtime.jsonl` gained matching `evaluation` and `action` lines.
    - Open the debug panel: collapsed by default, shows runId, facts, matched rules, deciding rule per capability, overridden effects, guard blocks.
    - Builder: switch "Preview as" between customers and confirm the preview changes; edit a condition and watch it update live; trigger a shadowed-rule warning; save, publish, and confirm the portal reflects it (round trip).
    - Check `read_console_messages` on every page for errors and hydration warnings; resize to 390px wide once per page for layout breakage.
    - Record a GIF of the acceptance flow (Anna vs Ben, then builder round trip) in the final round, named `qa-acceptance-round-<n>.gif`.
-   - Finish by pressing "Reset fixtures" again.
+   - Finish by pressing "Reset data" again.
    Done when every customer row and every builder check above has an observation.
 6. **Report.** Use the format below. Done when the report is sent.
 

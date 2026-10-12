@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { parseAction } from "@/domain/transitions";
 import { parseNow } from "@/lib/now";
+import { clearLog } from "@/server/logger";
 import { type ActionOutcome, performAction } from "@/server/perform";
 import { resetState } from "@/server/store";
 
@@ -26,8 +27,12 @@ export async function submitAction(
   return outcome;
 }
 
-/** Puts every customer, subscription and workflow back to the seed. */
-export async function resetFixtures(): Promise<void> {
+/**
+ * Puts every customer, subscription and workflow back to the seed and clears
+ * the runtime log, so the log only covers what happened since.
+ */
+export async function resetData(): Promise<void> {
   await resetState(new Date());
+  await clearLog();
   refresh();
 }
