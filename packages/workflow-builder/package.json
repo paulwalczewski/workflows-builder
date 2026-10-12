@@ -1,0 +1,20 @@
+{
+  "name": "@wb/workflow-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Catalogue-driven React editor for ordered-rule workflows.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "peerDependencies": {
+    "@heroui/react": "^3.2.6",
+    "@heroui/styles": "^3.2.6",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "dependencies": {
+    "@wb/workflow-engine": "workspace:*"
+  }
+}

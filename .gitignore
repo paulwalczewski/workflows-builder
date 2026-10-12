@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# app state and runtime logs (seeded from data/seed)
+/data/state/
+/logs/

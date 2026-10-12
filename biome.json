@@ -7,7 +7,17 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!logs",
+      "!.claude",
+      "!data",
+      "!packages/workflow-engine/src/schema/workflow.schema.json"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -22,7 +32,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "suspicious": {
+        "noThenProperty": "off"
+      }
     },
     "domains": {
       "next": "recommended",
@@ -35,5 +48,35 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/**",
+                      "**/src/**",
+                      "../../../**",
+                      "../../workflow-*/**",
+                      "next",
+                      "next/*",
+                      "@wb/workflow-builder"
+                    ],
+                    "message": "Workflow packages know nothing about the host app. Take what you need as input instead."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

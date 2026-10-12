@@ -9,11 +9,14 @@
     "lint": "biome check",
     "format": "biome format --write",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@heroui/react": "^3.2.6",
     "@heroui/styles": "^3.2.6",
+    "@wb/workflow-builder": "workspace:*",
+    "@wb/workflow-engine": "workspace:*",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
