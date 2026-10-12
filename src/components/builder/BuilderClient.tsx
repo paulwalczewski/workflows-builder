@@ -1,7 +1,6 @@
 "use client";
 
 import { Button, Chip } from "@heroui/react";
-import { buttonVariants } from "@heroui/styles";
 import { type PreviewSubject, WorkflowBuilder } from "@wb/workflow-builder";
 import {
   checkWorkflow,
@@ -123,7 +122,7 @@ export function BuilderClient({ saved, subjects, now }: Props) {
           >
             Save
           </Button>
-          {lastSaved.status !== "published" || dirty ? (
+          {(lastSaved.status !== "published" || dirty) && (
             <Button
               variant="primary"
               isDisabled={pending || !check.ok}
@@ -131,13 +130,6 @@ export function BuilderClient({ saved, subjects, now }: Props) {
             >
               {dirty ? "Save and publish" : "Publish"}
             </Button>
-          ) : (
-            <Link
-              href="/portal"
-              className={buttonVariants({ variant: "primary" })}
-            >
-              Open portal
-            </Link>
           )}
         </div>
       </div>
