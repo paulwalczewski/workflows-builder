@@ -13,14 +13,15 @@
 
 - Rules combine per capability, top rule wins (XACML first-applicable, scoped per capability and per limit). See `docs/adr/0001-per-capability-first-applicable.md`.
 - Default is deny. Seeded workflows end with a visible, unconditional Baseline rule.
+- Saving a workflow never changes what is live: the stored status wins and new workflows start as drafts. Only Publish publishes.
 - Within one rule, an exact capability beats `scope.*`, which beats `*`. Two effects in one rule that give opposite answers at the same specificity are a validation error.
 - Limits: top matching rule wins per limit key. The engine only reports limits; the host enforces them.
 - Conditions: one group per rule, `all` or `any`, no nesting. A rule with no conditions always matches. A comparison against a missing (null) fact is false.
 - Conditions compare typed facts supplied by the host. The builder owns the generic operators per type (number: `eq/neq/gt/gte/lt/lte/between`, enum: `in/notIn`, boolean: `is`).
 - Item-scoped rules (any condition reads an item fact) run once per item and may only affect item capabilities and item limits. Other rules run once; their item effects apply to every item.
-- Host guards run after the workflow and block state-impossible capabilities (resume only when paused, reactivate only when canceled, etc). Merchants cannot grant past a guard. Guard blocks are recorded in the trace.
+- Host guards run after the workflow and block state-impossible capabilities (resume only when paused, reactivate only when canceled, etc). Merchants cannot grant past a guard. A guard-blocked capability is shown disabled with the guard's reason (e.g. "Only paused subscriptions can be resumed."), never hidden; only default deny hides. When a rule already denies with a reason, that reason is shown instead. The view and logs record the guard.
 - One trigger per workflow (`subscription.opened`). Each workflow is `draft` or `published`; exactly one published per trigger.
-- Builder diagnostics: errors block saving (schema, unknown ids, item-scoped rule touching a subscription capability, same-rule contradiction). Warnings never block (shadowed effect, possible conflict with a rule above).
+- Builder diagnostics: errors block saving (schema, unknown ids, item-scoped rule touching a subscription capability, same-rule contradiction). Warnings never block: shadowed effect (a rule above with no conditions or the same conditions always decides first), possible conflict (a rule above answers differently and wins when both match; skipped when the two rules provably never match together, e.g. `currentCycle gte 3` vs `lte 1`), and a rule with no effects.
 
 ## Builder
 
@@ -31,11 +32,13 @@
 ## Domain changes to the provided types
 
 - `Customer.tier: "standard" | "pro"` added.
-- `Product { id, title, unitPrice }` added, so `item.add` has something to add.
+- Money is always an integer count of minor units (cents): `Product.unitPrice`, `SubscriptionItem.totalPrice`, and the money facts (`subscription.monthlySpend`, `item.unitPrice`, `item.totalPrice`). Field names stay as given; their unit is minor units. This avoids floating-point drift in sums and comparisons. Workflows store minor units too (`monthlySpend gte 20000`); money facts carry a catalogue `scale: 100` so the builder shows and edits EUR 200. Display uses the currency's own precision (EUR 2 digits, JPY 0).
+- `Product { id, title, unitPrice, currencyCode }` added, so `item.add` has something to add.
 - `SubscriptionItem.productId` added. `totalPrice` is derived server-side as `unitPrice * quantity` on every change.
 - `Subscription.paymentMethod { brand, last4 }` added, so `payment.update` has something to change. Updating it on a `failed` subscription sets status to `active` (simulated successful retry).
 - Derived facts, not stored: `subscription.monthlySpend` (sum of item `totalPrice`, normalised to a month from `billingPolicy`: week x52/12, day x365/12, year /12, same currency, no FX) and `subscription.daysUntilRenewal`.
 - "First cycle" means `currentCycle <= 1`.
+- Derived item fact `item.unitPrice` (`totalPrice / quantity`). "Premium items" are judged by unit price, so five bottles of a cheap oil are not premium (confirmed with the user; replaces the planned `item.totalPrice gt 50`).
 
 ## Persistence and logs
 

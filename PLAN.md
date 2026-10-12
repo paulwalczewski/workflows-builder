@@ -26,8 +26,8 @@ packages/
     src/rules/  conditions/  effects/  preview/  json/
 src/
   domain/                   types.ts, money.ts (monthly normalisation)
-  catalogue/                catalogue.ts (data), facts.ts (resolveFacts), guards.ts  (pure, isomorphic)
-  server/                   store.ts (state files, reset), logger.ts, run.ts (evaluate + guards + log), actions.ts
+  catalogue/                catalogue.ts (data), facts.ts (resolveSubscriptionFacts), guards.ts  (pure, isomorphic)
+  server/                   store.ts (state files, reset), logger.ts, run.ts (evaluate + guards), perform.ts (action check + apply + log)
   app/
     layout.tsx              navbar: Customer portal | Workflow builder
     page.tsx                links to both
@@ -45,8 +45,8 @@ logs/                       gitignored
 ```ts
 // Workflow document (stored JSON, validated by workflow.schema.json)
 {
-  schemaVersion: 1, id, name, status: "draft" | "published",
-  trigger: "subscription.opened", updatedAt,
+  schemaVersion: 1, id, name, description?, status: "draft" | "published",
+  trigger: "subscription.opened", updatedAt?,
   rules: [{
     id, name,
     when: { match: "all" | "any", conditions: [{ fact, op, value }] },
@@ -64,20 +64,26 @@ logs/                       gitignored
   facts: [{ id, label, scope: "subject" | "child", type: "number" | "enum" | "boolean", options?, unit? }],
   capabilities: [{ id, label, subject: "subject" | "child" }],
   limits: [{ id, label, subject: "subject" | "child" }],
-  effects: [{ type, label }]          // which of the three kinds are offered
+  effects: [{ type, label }],         // which of the three kinds are offered
+  terms?: { subject, child }          // what the host calls them, for messages
 }
 
-// Engine
+// Engine (packages/workflow-engine/src/types.ts is authoritative)
 evaluate({ workflow, catalogue, input: { facts, children: [{ id, facts }] } }): {
-  subject:  { capabilities: Record<cap, Decision>, limits: Record<limit, LimitDecision> },
+  workflowId,
+  subject:  { capabilities: Record<cap, CapabilityDecision>, limits: Record<limit, LimitDecision> },
   children: Record<childId, { capabilities, limits }>,
-  trace: { rules: [{ ruleId, perTarget: [{ targetId, matched, conditions: [{ fact, op, value, actual, pass }] }] }] }
+  trace: [{ ruleId, ruleIndex, name, scope: "subject" | "child",
+            evaluations: [{ targetId: childId | null, matched, conditions: [{ fact, op, expected, actual, pass }] }] }]
 }
-Decision = { allowed: boolean, reason?: string, decidedBy: ruleId | "default", overridden: [{ ruleId, effectIndex }] }
-analyze(workflow, catalogue): Diagnostic[]   // { severity, ruleId, effectIndex?, code, message }
+EffectRef = { ruleId, ruleIndex, effectIndex }
+CapabilityDecision = { capability, allowed, reason?, decidedBy: EffectRef | null /* null = default deny */, overridden: [EffectRef & { allowed, reason? }] }
+LimitDecision = { limit, value: number | null, decidedBy: EffectRef | null, overridden: [EffectRef & { value }] }
+analyze(workflow, catalogue): Diagnostic[]   // { severity: "error" | "warning", code, message, ruleId?, ruleIndex?, effectIndex?, conditionIndex?, path? }
+checkWorkflow(doc, catalogue): { ok, workflow | null, diagnostics }   // shape, then analyze, then catalogue schema
 ```
 
-Engine terms are generic (`subject`/`child`). The host maps subscription to subject and item to child. `now` never reaches the engine: `resolveFacts(data, now)` turns it into facts like `daysUntilRenewal`, which keeps `evaluate` free of clocks.
+Engine terms are generic (`subject`/`child`). The host maps subscription to subject and item to child. `now` never reaches the engine: the host's fact resolver turns it into facts like `daysUntilRenewal`, which keeps `evaluate` free of clocks.
 
 ## Phases
 
@@ -92,39 +98,39 @@ Engine terms are generic (`subject`/`child`). The host maps subscription to subj
 ### 1. Engine (test first)
 - `workflow.schema.json` + catalogue schema builder; `validate()` returns typed errors.
 - `evaluate()`: per target (subject, then each child), walk rules top to bottom; non-child rules evaluated once, child-scoped rules per child; for each effect expand wildcards against the catalogue (child-scoped rules only reach child capabilities), apply in-rule specificity, first decider wins per (target, capability|limit), later ones recorded as `overridden`.
-- `analyze()`: schema + id errors, child-scoped rule touching subject capability, same-rule contradiction; warnings for shadowed effects (rule above unconditional or identical conditions) and possible conflicts (rule above, opposite verdict, same capability).
+- `analyze()`: schema + id errors, child-scoped rule touching subject capability, same-rule contradiction; warnings for shadowed effects (rule above unconditional or same conditions in any order), possible conflicts (rule above, different answer, same capability or limit, unless the two rules provably never match together) and rules with no effects.
 - Tests: each combining rule, wildcard specificity, `any`/`all`/empty, null facts, child scoping, every diagnostic code, round trip `parse -> serialize` is stable (canonical key order).
 
 ### 2. Host domain
 - `domain/types.ts`: provided types + `Customer.tier`, `Product`, `SubscriptionItem.productId`, `Subscription.paymentMethod`.
 - `catalogue/catalogue.ts`:
-  - Facts: `customer.tier`, `subscription.status`, `subscription.currentCycle`, `subscription.monthlySpend`, `subscription.daysUntilRenewal`, `subscription.itemCount`, `subscription.billingInterval`, `item.quantity`, `item.totalPrice`.
+  - Facts: `customer.tier`, `subscription.status`, `subscription.currentCycle`, `subscription.monthlySpend`, `subscription.daysUntilRenewal`, `subscription.itemCount`, `subscription.billingInterval`, `item.quantity`, `item.unitPrice`, `item.totalPrice`. Money facts are integer minor units with `scale: 100` for display.
   - Capabilities: `subscription.cancel`, `subscription.pause`, `subscription.resume`, `subscription.reactivate`, `item.add` (subject), `item.remove`, `item.updateQuantity` (child), `payment.update`. "Contact support" is always shown and not a capability.
   - Limits: `subscription.maxItems`, `item.maxQuantity`.
-- `catalogue/facts.ts`: `resolveFacts(customer, subscription, now)`. Tests for monthly normalisation and days until renewal.
-- `catalogue/guards.ts`: pause only when active, resume only when paused, reactivate only when canceled, cancel not when canceled, item edits not when canceled, remove not the last item. Applied after `evaluate`, written into the decision as `blockedBy: "guard"`.
+- `catalogue/facts.ts`: `resolveSubscriptionFacts(customer, subscription, now)`; the builder's `resolveFacts(data, now)` (Phase 4) wraps it per customer. Tests for monthly normalisation and days until renewal.
+- `catalogue/guards.ts`: pause only when active, resume only when paused, reactivate only when canceled, cancel not when canceled, item edits not when canceled, remove not the last item. Applied after `evaluate` by `subscriptionView`, which wraps each engine decision in a `CapabilityView { availability: enabled | disabled | hidden, reason?, source: rule | default | guard | limit, decision, guard? }`. Precedence: default deny hides; a rule deny disables with its reason; a guard disables with its reason; a reached limit disables with a generated reason; otherwise enabled.
 - `server/store.ts`: read/write `data/state`, `resetState()` from seed (resolve `nextBillingInDays`), `DATA_DIR` env for tests.
-- `server/logger.ts`: append JSONL `{ kind: "evaluation" | "action", runId, at, now, workflowId, customerId, subscriptionId, facts, result, trace, action?, outcome? }`.
-- `server/run.ts`: `runForSubscription(subscriptionId, now)` = load published workflow, resolve facts, evaluate, guards, log, return.
+- `server/logger.ts`: append JSONL `{ kind: "evaluation" | "action", runId, at, now, workflowId, workflowName, customerId, subscriptionId, facts, result (includes the trace), view? (evaluation), action?, outcome?, reason?, decision? (refusals) }`. `readLog({ subscriptionId, limit })` reads newest first.
+- `server/run.ts`: `runForSubscription(subscriptionId, now)` = load published workflow, resolve facts, evaluate, guards, return (no I/O writes). `runAndLog` = the same, logged as an evaluation.
 - Seeds (all EUR):
 
 | Customer | Setup | Expected under Standard |
 |---|---|---|
 | Anna | sub A: 5 cycles, EUR 220/mo; sub B: 4 cycles, EUR 60/mo | A: can cancel. B: "contact support" (baseline) |
 | Ben | 1 cycle | "contact support" (first cycle rule) |
-| Carla | status `failed` | only `payment.update`; everything else disabled with reason |
+| Carla | status `failed` | only `payment.update`; everything else disabled with the lockdown reason |
 | Dan | renewal in 1 day | item edits disabled with lock reason |
 | Eve | tier pro, one item at EUR 60 | pause allowed, maxItems 6, that item cannot be removed |
 
 - Standard (published), top to bottom:
   1. Payment failed: `subscription.status in [failed]` then allow `payment.update`, deny `*` ("Your last payment failed. Update your payment method to continue.")
   2. Renewal lock: `daysUntilRenewal lte 2` then deny `item.*` ("Item changes are locked in the 2 days before renewal.")
-  3. Loyal can cancel: `currentCycle gte 3` and `monthlySpend gte 200` then allow `subscription.cancel`
+  3. Loyal can cancel: `currentCycle gte 3` and `monthlySpend gte 20000` (EUR 200 in minor units) then allow `subscription.cancel`
   4. First cycle: `currentCycle lte 1` then deny `subscription.cancel` ("In your first cycle, please contact support to cancel.")
   5. Pro perks: `customer.tier in [pro]` then allow `subscription.pause`, set `subscription.maxItems` 6
-  6. Premium items stay (item-scoped): `item.totalPrice gt 50` then deny `item.remove` ("Premium items can only be removed by support.")
+  6. Premium items stay (item-scoped): `item.unitPrice gt 5000` (EUR 50) then deny `item.remove` ("Premium items can only be removed by support.")
   7. Baseline: deny `subscription.cancel` ("Contact support to cancel."), allow `subscription.resume`, `subscription.reactivate`, `item.*`, `payment.update`, set `subscription.maxItems` 4, `item.maxQuantity` 5
-- Holiday freeze (draft): freeze rule (`daysUntilRenewal lte 7`, deny `item.*`) and no-pause rule on top, then the Standard rules.
+- Holiday freeze (draft): Standard's payment-failed lockdown stays on top (a lockdown must outrank everything, see ADR 0001), then the freeze rule (`daysUntilRenewal lte 7`, deny `item.*`) and the no-pause rule, then the rest of Standard. The no-pause rule shadows Pro's pause allowance, which shows a builder warning.
 - Scenario tests: Standard x every seed customer gives the table above. Holiday freeze changes Anna's item edits.
 
 ### 3. Customer portal
