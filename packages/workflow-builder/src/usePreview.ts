@@ -6,7 +6,7 @@ import {
   evaluate,
   type Workflow,
 } from "@wb/workflow-engine";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { PreviewSubject, PreviewTarget } from "./types";
 
 export interface Preview {
@@ -46,12 +46,11 @@ export function usePreview<Data>({
     () => checkWorkflow(workflow, catalogue),
     [workflow, catalogue],
   );
+  // The last draft without errors, updated during render (no extra pass).
   const [lastValid, setLastValid] = useState<Workflow | null>(
-    check.ok ? workflow : null,
+    check.ok ? check.workflow : null,
   );
-  useEffect(() => {
-    if (check.ok && check.workflow) setLastValid(check.workflow);
-  }, [check]);
+  if (check.ok && check.workflow !== lastValid) setLastValid(check.workflow);
 
   const subject = subjects.find((s) => s.id === subjectId) ?? subjects[0];
   const targets = useMemo(
@@ -60,7 +59,7 @@ export function usePreview<Data>({
   );
   const target = targets.find((t) => t.id === targetId) ?? targets[0];
 
-  const evaluated = check.ok && check.workflow ? check.workflow : lastValid;
+  const evaluated = check.ok ? check.workflow : lastValid;
   const result = useMemo(
     () =>
       evaluated && target

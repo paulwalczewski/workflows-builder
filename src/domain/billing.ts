@@ -1,4 +1,9 @@
-import type { Interval, ISODateTime, Subscription } from "./types";
+import type {
+  Interval,
+  ISODateTime,
+  Subscription,
+  SubscriptionItem,
+} from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -11,6 +16,11 @@ const PER_MONTH: Record<Interval, number> = {
 };
 
 /** Sum of item prices for one billing cycle, in minor units. */
+/** One unit's price in minor units, derived from the item's total. */
+export function unitPrice(item: SubscriptionItem): number {
+  return Math.round(item.totalPrice / item.quantity);
+}
+
 export function cycleTotal(subscription: Subscription): number {
   return subscription.items.reduce((sum, item) => sum + item.totalPrice, 0);
 }

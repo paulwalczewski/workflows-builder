@@ -1,4 +1,4 @@
-import { addBillingPeriod } from "./billing";
+import { addBillingPeriod, unitPrice } from "./billing";
 import type { Product, Subscription } from "./types";
 
 /**
@@ -22,6 +22,23 @@ export type TransitionResult =
 
 /** The hard ceiling on any quantity, whatever a workflow says. */
 export const MAX_QUANTITY = 99;
+
+/** The highest quantity allowed, given the workflow's limit (null: none). */
+export function quantityCeiling(limit: number | null | undefined): number {
+  return Math.min(limit ?? MAX_QUANTITY, MAX_QUANTITY);
+}
+
+/** Products that can still be added: same currency, not already in it. */
+export function addableProducts(
+  subscription: Subscription,
+  products: Product[],
+): Product[] {
+  return products.filter(
+    (p) =>
+      p.currencyCode === subscription.currencyCode &&
+      !subscription.items.some((i) => i.productId === p.id),
+  );
+}
 
 /**
  * Applies one action to a subscription. Pure; assumes the capability check
@@ -114,16 +131,14 @@ export function applyAction(
     case "item.updateQuantity": {
       const item = subscription.items.find((i) => i.id === action.itemId);
       if (!item) return fail("That item is not in this subscription.");
-      const ceiling = Math.min(maxQuantity ?? MAX_QUANTITY, MAX_QUANTITY);
+      const ceiling = quantityCeiling(maxQuantity);
       if (!Number.isInteger(action.quantity) || action.quantity < 1) {
         return fail("Quantity must be a whole number of at least 1.");
       }
       if (action.quantity > ceiling)
         return fail(`Quantity can be at most ${ceiling}.`);
       const product = products.find((p) => p.id === item.productId);
-      const unitPrice = product
-        ? product.unitPrice
-        : Math.round(item.totalPrice / item.quantity);
+      const price = product ? product.unitPrice : unitPrice(item);
       return ok(
         {
           ...subscription,
@@ -132,7 +147,7 @@ export function applyAction(
               ? {
                   ...i,
                   quantity: action.quantity,
-                  totalPrice: unitPrice * action.quantity,
+                  totalPrice: price * action.quantity,
                 }
               : i,
           ),

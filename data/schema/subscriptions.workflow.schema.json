@@ -608,6 +608,13 @@
       }
     },
     "effect": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      },
       "oneOf": [
         {
           "type": "object",

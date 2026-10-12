@@ -14,13 +14,15 @@ import {
 import {
   type Catalogue,
   capabilityIds,
+  capabilityLabel,
   capabilityPatterns,
   type Effect,
   expandPattern,
   limitIds,
+  limitLabel,
   type Scope,
 } from "@wb/workflow-engine";
-import { capabilityLabel, defaultEffect, limitLabel } from "../model";
+import { defaultEffect } from "../model";
 import { selectionToStrings } from "./selection";
 
 interface Props {
@@ -153,21 +155,21 @@ export function EffectRow({
               </TagGroup.List>
             </TagGroup>
             {effect.type === "capability.deny" && (
-              <p className="text-xs text-muted">
-                Tip: "Everything" plus an Allow in the same rule means "only
-                these". Named capabilities win over "Everything".
-              </p>
-            )}
-            {effect.type === "capability.deny" && (
-              <TextField
-                value={effect.reason}
-                onChange={(reason) => onChange({ ...effect, reason })}
-              >
-                <Label className="text-xs text-muted">
-                  Reason shown to the customer
-                </Label>
-                <Input placeholder="e.g. Please contact support to cancel." />
-              </TextField>
+              <>
+                <p className="text-xs text-muted">
+                  Tip: "Everything" plus an Allow in the same rule means "only
+                  these". Named capabilities win over "Everything".
+                </p>
+                <TextField
+                  value={effect.reason}
+                  onChange={(reason) => onChange({ ...effect, reason })}
+                >
+                  <Label className="text-xs text-muted">
+                    Reason shown to the customer
+                  </Label>
+                  <Input placeholder="e.g. Please contact support to cancel." />
+                </TextField>
+              </>
             )}
           </div>
         )}

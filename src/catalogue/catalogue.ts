@@ -1,4 +1,9 @@
-import type { Catalogue } from "@wb/workflow-engine";
+import {
+  type Catalogue,
+  capabilityLabel as engineCapabilityLabel,
+  limitLabel as engineLimitLabel,
+  factDef,
+} from "@wb/workflow-engine";
 
 /**
  * What this product offers the workflow builder and runtime. Plain data, safe
@@ -167,16 +172,11 @@ export const subscriptionCatalogue: Catalogue = {
   ],
 };
 
-export function capabilityLabel(id: string): string {
-  return (
-    subscriptionCatalogue.capabilities.find((c) => c.id === id)?.label ?? id
-  );
-}
+export const capabilityLabel = (id: string) =>
+  engineCapabilityLabel(subscriptionCatalogue, id);
 
-export function limitLabel(id: string): string {
-  return subscriptionCatalogue.limits.find((l) => l.id === id)?.label ?? id;
-}
+export const limitLabel = (id: string) =>
+  engineLimitLabel(subscriptionCatalogue, id);
 
-export function factLabel(id: string): string {
-  return subscriptionCatalogue.facts.find((f) => f.id === id)?.label ?? id;
-}
+export const factLabel = (id: string) =>
+  factDef(subscriptionCatalogue, id)?.label ?? id;

@@ -157,7 +157,7 @@ Engine terms are generic (`subject`/`child`). The host maps subscription to subj
 - Round-trip test: load Standard, save untouched, file unchanged; edit in builder, save, `runForSubscription` reflects it.
 
 ### 6. Docs
-- README: setup, `pnpm dev`, demo script (Anna vs Ben under Starter, builder preview of Standard, publish it, Carla, Dan, time shift), where logs live.
+- README: setup (`pnpm install`, `pnpm dev`; test, lint and typecheck as optional checks), where state and logs live, and a map of the parts. The demo script lives in this file.
 - Keep `DECISIONS.md` and `CONTEXT.md` current.
 
 ## Demo script

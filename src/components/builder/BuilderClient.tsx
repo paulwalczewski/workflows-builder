@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Chip } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import { type PreviewSubject, WorkflowBuilder } from "@wb/workflow-builder";
 import {
@@ -20,6 +20,7 @@ import {
   type CustomerPreviewData,
   resolveCustomerTargets,
 } from "@/catalogue/preview";
+import { Notice } from "@/components/Notice";
 import { downloadWorkflow } from "./download";
 
 interface Props {
@@ -39,35 +40,39 @@ export function BuilderClient({ saved, subjects, now }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const savedText = useMemo(() => serializeWorkflow(lastSaved), [lastSaved]);
   const dirty = useMemo(
-    () => serializeWorkflow(draft) !== serializeWorkflow(lastSaved),
-    [draft, lastSaved],
+    () => serializeWorkflow(draft) !== savedText,
+    [draft, savedText],
   );
   const check = useMemo(
     () => checkWorkflow(draft, subscriptionCatalogue),
     [draft],
   );
 
+  /** Saves the draft; resolves to whether the server accepted it. */
+  const persist = async () => {
+    const outcome = await saveWorkflowAction(draft);
+    if (outcome.ok) {
+      setLastSaved(outcome.workflow);
+      setDraft(outcome.workflow);
+      setServerErrors(null);
+      setMessage("Saved.");
+    } else {
+      setServerErrors(outcome.diagnostics);
+      setMessage(null);
+    }
+    return outcome.ok;
+  };
+
   const save = () =>
-    new Promise<boolean>((resolve) =>
-      startTransition(async () => {
-        const outcome = await saveWorkflowAction(draft);
-        if (outcome.ok) {
-          setLastSaved(outcome.workflow);
-          setDraft(outcome.workflow);
-          setServerErrors(null);
-          setMessage("Saved.");
-        } else {
-          setServerErrors(outcome.diagnostics);
-          setMessage(null);
-        }
-        resolve(outcome.ok);
-      }),
-    );
+    startTransition(async () => {
+      await persist();
+    });
 
   const publish = () =>
     startTransition(async () => {
-      if (dirty && !(await save())) return;
+      if (dirty && !(await persist())) return;
       await publishWorkflowAction(draft.id);
       setLastSaved((w) => ({ ...w, status: "published" }));
       setDraft((w) => ({ ...w, status: "published" }));
@@ -114,7 +119,7 @@ export function BuilderClient({ saved, subjects, now }: Props) {
             variant="secondary"
             isPending={pending}
             isDisabled={!dirty || !check.ok}
-            onPress={() => void save()}
+            onPress={save}
           >
             Save
           </Button>
@@ -137,30 +142,15 @@ export function BuilderClient({ saved, subjects, now }: Props) {
         </div>
       </div>
 
-      {message && !dirty && (
-        <Alert status="success">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>{message}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {message && !dirty && <Notice status="success">{message}</Notice>}
       {serverErrors && (
-        <Alert status="danger">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>The server refused to save</Alert.Title>
-            <Alert.Description>
-              <ul className="list-disc pl-4">
-                {serverErrors.map((d) => (
-                  <li key={`${d.code}-${d.ruleIndex}-${d.message}`}>
-                    {d.message}
-                  </li>
-                ))}
-              </ul>
-            </Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <Notice status="danger" title="The server refused to save">
+          <ul className="list-disc pl-4">
+            {serverErrors.map((d) => (
+              <li key={`${d.code}-${d.ruleIndex}-${d.message}`}>{d.message}</li>
+            ))}
+          </ul>
+        </Notice>
       )}
 
       <WorkflowBuilder

@@ -53,10 +53,7 @@ export function GatedButton({
           {children}
         </Button>
       </Tooltip.Trigger>
-      <Tooltip.Content
-        showArrow
-        className="max-w-64 break-words [word-break:normal]"
-      >
+      <Tooltip.Content showArrow className="max-w-64">
         <Tooltip.Arrow />
         {reason}
       </Tooltip.Content>

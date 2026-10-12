@@ -6,7 +6,6 @@ import {
   ruleLimits,
   ruleScope,
   ruleVerdicts,
-  specificity,
 } from "./capabilities";
 import { OPERATORS_BY_TYPE } from "./conditions";
 import type {
@@ -198,24 +197,8 @@ function contradictions(
   catalogue: Catalogue,
 ): Diagnostic[] {
   const all = catalogue.capabilities.map((c) => c.id);
-  const top = new Map<string, { level: number; allowed: Set<boolean> }>();
-  for (const effect of rule.then) {
-    if (effect.type === "limit.set") continue;
-    const allowed = effect.type === "capability.allow";
-    for (const pattern of effect.capabilities) {
-      const level = specificity(pattern);
-      for (const capability of expandPattern(pattern, all)) {
-        const current = top.get(capability);
-        if (!current || level > current.level) {
-          top.set(capability, { level, allowed: new Set([allowed]) });
-        } else if (level === current.level) {
-          current.allowed.add(allowed);
-        }
-      }
-    }
-  }
-  const clashing = [...top]
-    .filter(([, v]) => v.allowed.size > 1)
+  const clashing = [...ruleVerdicts(rule, all)]
+    .filter(([, v]) => v.contested)
     .map(([c]) => c);
   if (clashing.length === 0) return [];
   return [
@@ -414,11 +397,14 @@ function disjoint(a: Condition, b: Condition): boolean {
   const hi = Math.min(x.hi, y.hi);
   if (lo < hi) return false;
   if (lo > hi) return true;
-  const loIn = x.lo === lo ? x.loIn : y.loIn;
-  const loIn2 = y.lo === lo ? y.loIn : x.loIn;
-  const hiIn = x.hi === hi ? x.hiIn : y.hiIn;
-  const hiIn2 = y.hi === hi ? y.hiIn : x.hiIn;
-  return !(loIn && loIn2 && hiIn && hiIn2);
+  // The ranges touch at one point: disjoint unless both include it.
+  return !(includes(x, lo) && includes(y, lo));
+}
+
+function includes(r: Range, v: number): boolean {
+  return (
+    (v > r.lo || (v === r.lo && r.loIn)) && (v < r.hi || (v === r.hi && r.hiIn))
+  );
 }
 
 /**

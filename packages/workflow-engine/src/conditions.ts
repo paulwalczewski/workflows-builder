@@ -27,6 +27,13 @@ export const OPERATOR_LABELS: Record<Operator, string> = {
   is: "is",
 };
 
+const COMPARE = {
+  gt: (a: number, b: number) => a > b,
+  gte: (a: number, b: number) => a >= b,
+  lt: (a: number, b: number) => a < b,
+  lte: (a: number, b: number) => a <= b,
+};
+
 /** A comparison against a missing fact is always false, whatever the operator. */
 export function testCondition(condition: Condition, actual: unknown): boolean {
   if (actual === null || actual === undefined) return false;
@@ -37,28 +44,13 @@ export function testCondition(condition: Condition, actual: unknown): boolean {
     case "neq":
       return actual !== value;
     case "gt":
-      return (
-        typeof actual === "number" &&
-        typeof value === "number" &&
-        actual > value
-      );
     case "gte":
-      return (
-        typeof actual === "number" &&
-        typeof value === "number" &&
-        actual >= value
-      );
     case "lt":
-      return (
-        typeof actual === "number" &&
-        typeof value === "number" &&
-        actual < value
-      );
     case "lte":
       return (
         typeof actual === "number" &&
         typeof value === "number" &&
-        actual <= value
+        COMPARE[op](actual, value)
       );
     case "between": {
       if (typeof actual !== "number" || !Array.isArray(value)) return false;

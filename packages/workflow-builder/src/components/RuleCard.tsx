@@ -18,7 +18,7 @@ import {
   type RuleTrace,
   ruleScope,
 } from "@wb/workflow-engine";
-import { defaultCondition, defaultEffect } from "../model";
+import { defaultCondition, defaultEffect, removeAt, replaceAt } from "../model";
 import { ConditionRow } from "./ConditionRow";
 import { EffectRow } from "./EffectRow";
 
@@ -71,6 +71,8 @@ export function RuleCard({
   const runs = trace?.evaluations.length ?? 0;
   const label = (targetId: string | null) =>
     targetId === null ? "this" : (childLabels[targetId] ?? targetId);
+  const setConditions = (conditions: Rule["when"]["conditions"]) =>
+    onChange({ ...rule, when: { ...rule.when, conditions } });
 
   return (
     <Card
@@ -208,25 +210,9 @@ export function RuleCard({
                 }))
                 .filter((t) => t.trace !== undefined)}
               onChange={(next) =>
-                onChange({
-                  ...rule,
-                  when: {
-                    ...rule.when,
-                    conditions: rule.when.conditions.map((c, j) =>
-                      j === i ? next : c,
-                    ),
-                  },
-                })
+                setConditions(replaceAt(rule.when.conditions, i, next))
               }
-              onRemove={() =>
-                onChange({
-                  ...rule,
-                  when: {
-                    ...rule.when,
-                    conditions: rule.when.conditions.filter((_, j) => j !== i),
-                  },
-                })
-              }
+              onRemove={() => setConditions(removeAt(rule.when.conditions, i))}
             />
           ))}
           <div>
@@ -235,16 +221,10 @@ export function RuleCard({
               variant="secondary"
               isDisabled={catalogue.facts.length === 0}
               onPress={() =>
-                onChange({
-                  ...rule,
-                  when: {
-                    ...rule.when,
-                    conditions: [
-                      ...rule.when.conditions,
-                      defaultCondition(catalogue.facts[0]),
-                    ],
-                  },
-                })
+                setConditions([
+                  ...rule.when.conditions,
+                  defaultCondition(catalogue.facts[0]),
+                ])
               }
             >
               Add condition
@@ -265,11 +245,11 @@ export function RuleCard({
               onChange={(next) =>
                 onChange({
                   ...rule,
-                  then: rule.then.map((e, j) => (j === i ? next : e)),
+                  then: replaceAt(rule.then, i, next),
                 })
               }
               onRemove={() =>
-                onChange({ ...rule, then: rule.then.filter((_, j) => j !== i) })
+                onChange({ ...rule, then: removeAt(rule.then, i) })
               }
             />
           ))}

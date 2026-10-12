@@ -14,6 +14,7 @@ import {
   type Condition,
   type ConditionTrace,
   type FactDef,
+  factDef,
   OPERATOR_LABELS,
   OPERATORS_BY_TYPE,
   type Operator,
@@ -21,7 +22,6 @@ import {
 import {
   changeOperator,
   defaultCondition,
-  factDef,
   fromDisplay,
   toDisplay,
 } from "../model";

@@ -71,6 +71,8 @@ export interface CapabilityVerdict {
   effectIndex: number;
   /** True when the rule reached this capability through `*` or `scope.*`. */
   viaWildcard: boolean;
+  /** True when the rule both allows and denies it at its most specific level. */
+  contested: boolean;
 }
 
 /**
@@ -81,10 +83,7 @@ export function ruleVerdicts(
   rule: Rule,
   capabilities: readonly string[],
 ): Map<string, CapabilityVerdict> {
-  const best = new Map<
-    string,
-    Omit<CapabilityVerdict, "viaWildcard"> & { specificity: number }
-  >();
+  const best = new Map<string, CapabilityVerdict & { level: number }>();
   rule.then.forEach((effect, effectIndex) => {
     if (effect.type === "limit.set") return;
     const allowed = effect.type === "capability.allow";
@@ -94,35 +93,31 @@ export function ruleVerdicts(
       const level = specificity(pattern);
       for (const capability of expandPattern(pattern, capabilities)) {
         const current = best.get(capability);
-        const wins =
-          !current ||
-          level > current.specificity ||
-          (level === current.specificity && current.allowed && !allowed);
-        if (wins)
-          best.set(capability, {
-            allowed,
-            reason,
-            effectIndex,
-            specificity: level,
-          });
+        const tie = current?.level === level;
+        if (current && level < current.level) continue;
+        const contested =
+          tie && (current.contested || current.allowed !== allowed);
+        if (tie && !(current.allowed && !allowed)) {
+          current.contested = contested;
+          continue;
+        }
+        best.set(capability, {
+          allowed,
+          reason,
+          effectIndex,
+          viaWildcard: level < 2,
+          contested,
+          level,
+        });
       }
     }
   });
-  const verdicts = new Map<string, CapabilityVerdict>();
-  for (const [capability, { specificity: level, ...verdict }] of best) {
-    const viaWildcard = level < 2;
-    verdicts.set(
+  return new Map(
+    [...best].map(([capability, { level: _, ...verdict }]) => [
       capability,
-      verdict.reason === undefined
-        ? {
-            allowed: verdict.allowed,
-            effectIndex: verdict.effectIndex,
-            viaWildcard,
-          }
-        : { ...verdict, viaWildcard },
-    );
-  }
-  return verdicts;
+      verdict,
+    ]),
+  );
 }
 
 /** The first value each limit is set to inside one rule. */

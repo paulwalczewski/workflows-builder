@@ -4,6 +4,7 @@ import { Chip, Tabs } from "@heroui/react";
 import {
   type CapabilityDecision,
   type Effect,
+  type LimitDecision,
   OPERATOR_LABELS,
 } from "@wb/workflow-engine";
 import { capabilityLabel, factLabel, limitLabel } from "@/catalogue/catalogue";
@@ -353,9 +354,7 @@ function LimitLine({
   ruleName,
 }: {
   label: string;
-  decision:
-    | { value: number | null; decidedBy: { ruleIndex: number } | null }
-    | undefined;
+  decision: LimitDecision | undefined;
   ruleName: (ruleIndex: number) => string;
 }) {
   return (

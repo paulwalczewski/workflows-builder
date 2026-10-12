@@ -4,7 +4,13 @@ import { buildCatalogueSchema } from "./schema/catalogue-schema";
 import { workflowSchema } from "./schema/workflow-schema";
 import type { Catalogue, Diagnostic, Workflow } from "./types";
 
-const ajv = new Ajv({ allErrors: true, strict: false, verbose: true });
+const options = {
+  allErrors: true,
+  discriminator: true,
+  strict: false,
+  verbose: true,
+} as const;
+const ajv = new Ajv(options);
 const validateShape = ajv.compile<Workflow>(workflowSchema);
 const catalogueValidators = new WeakMap<Catalogue, ValidateFunction>();
 
@@ -12,11 +18,7 @@ function catalogueValidator(catalogue: Catalogue): ValidateFunction {
   let validator = catalogueValidators.get(catalogue);
   if (!validator) {
     // A fresh Ajv per catalogue avoids $id clashes between catalogues.
-    validator = new Ajv({
-      allErrors: true,
-      strict: false,
-      verbose: true,
-    }).compile(buildCatalogueSchema(catalogue));
+    validator = new Ajv(options).compile(buildCatalogueSchema(catalogue));
     catalogueValidators.set(catalogue, validator);
   }
   return validator;
@@ -24,7 +26,7 @@ function catalogueValidator(catalogue: Catalogue): ValidateFunction {
 
 /** Structural check against the generic schema. */
 export function validateWorkflowShape(doc: unknown): Diagnostic[] {
-  return validateShape(doc) ? [] : toDiagnostics(validateShape.errors, doc);
+  return validateShape(doc) ? [] : toDiagnostics(validateShape.errors);
 }
 
 /** Check against the schema narrowed to one catalogue. */
@@ -33,16 +35,16 @@ export function validateAgainstCatalogue(
   catalogue: Catalogue,
 ): Diagnostic[] {
   const validator = catalogueValidator(catalogue);
-  return validator(doc) ? [] : toDiagnostics(validator.errors, doc);
+  return validator(doc) ? [] : toDiagnostics(validator.errors);
 }
 
-export interface CheckResult {
-  /** True when there are no errors. Warnings never block. */
-  ok: boolean;
-  /** The document typed as a workflow, when its shape is valid. */
-  workflow: Workflow | null;
-  diagnostics: Diagnostic[];
-}
+/**
+ * `ok` is true when there are no errors (warnings never block). `workflow` is
+ * the document typed as a workflow, present whenever its shape is valid.
+ */
+export type CheckResult =
+  | { ok: true; workflow: Workflow; diagnostics: Diagnostic[] }
+  | { ok: false; workflow: Workflow | null; diagnostics: Diagnostic[] };
 
 /**
  * Everything the builder runs before saving and the runtime runs before
@@ -59,32 +61,16 @@ export function checkWorkflow(doc: unknown, catalogue: Catalogue): CheckResult {
   if (!diagnostics.some((d) => d.severity === "error")) {
     diagnostics.push(...validateAgainstCatalogue(doc, catalogue));
   }
-  return {
-    ok: !diagnostics.some((d) => d.severity === "error"),
-    workflow,
-    diagnostics,
-  };
+  return diagnostics.some((d) => d.severity === "error")
+    ? { ok: false, workflow, diagnostics }
+    : { ok: true, workflow, diagnostics };
 }
 
-const EFFECT_BRANCH: Record<string, number> = {
-  "capability.allow": 0,
-  "capability.deny": 1,
-  "limit.set": 2,
-};
-
-/**
- * Turns Ajv errors into one readable error per location. The effect schema is
- * a `oneOf`, so Ajv reports why every branch failed; only the branch for the
- * effect's own `type` is relevant to the merchant.
- */
-function toDiagnostics(
-  errors: ErrorObject[] | null | undefined,
-  doc: unknown,
-): Diagnostic[] {
+/** Turns Ajv errors into one readable error per location. */
+function toDiagnostics(errors: ErrorObject[] | null | undefined): Diagnostic[] {
   const seen = new Set<string>();
   const diagnostics: Diagnostic[] = [];
   for (const error of errors ?? []) {
-    if (!relevant(error, doc)) continue;
     if (seen.has(error.instancePath)) continue;
     seen.add(error.instancePath);
     const rule = /^\/rules\/(\d+)/.exec(error.instancePath);
@@ -103,29 +89,6 @@ function toDiagnostics(
     });
   }
   return diagnostics;
-}
-
-function relevant(error: ErrorObject, doc: unknown): boolean {
-  // Only errors inside an effect are filtered; Ajv reports their schemaPath
-  // relative to the referenced effect definition, e.g. "#/oneOf/1/...".
-  if (!/^\/rules\/\d+\/then\/\d+/.test(error.instancePath)) return true;
-  const type = effectType(doc, error.instancePath);
-  const wanted = type === undefined ? undefined : EFFECT_BRANCH[type];
-  if (error.keyword === "oneOf") {
-    // "must match exactly one schema": only useful when the type is unknown.
-    return wanted === undefined;
-  }
-  const branch = /oneOf\/(\d+)\//.exec(error.schemaPath);
-  if (!branch) return true;
-  return wanted === undefined || wanted === Number(branch[1]);
-}
-
-function effectType(doc: unknown, instancePath: string): string | undefined {
-  const match = /^\/rules\/(\d+)\/then\/(\d+)/.exec(instancePath);
-  if (!match) return undefined;
-  const effect = (doc as Workflow | undefined)?.rules?.[Number(match[1])]
-    ?.then?.[Number(match[2])] as { type?: unknown } | undefined;
-  return typeof effect?.type === "string" ? effect.type : undefined;
 }
 
 /** A sentence a merchant can act on, for the schema errors they can cause. */

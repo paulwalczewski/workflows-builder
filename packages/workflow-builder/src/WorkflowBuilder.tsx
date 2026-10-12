@@ -11,6 +11,7 @@ import {
   TextArea,
   TextField,
 } from "@heroui/react";
+import { type FactDef, formatFactValue, withUnit } from "@wb/workflow-engine";
 import { useState } from "react";
 import { JsonPanel } from "./components/JsonPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -18,16 +19,19 @@ import { RuleCard } from "./components/RuleCard";
 import {
   addRule,
   duplicateRule,
-  type factDef,
-  formatFactValue,
   moveRule,
   removeRule,
-  updateRule,
+  replaceRule,
 } from "./model";
 import type { WorkflowBuilderProps } from "./types";
 import { usePreview } from "./usePreview";
 
 const DAY = 24 * 60 * 60 * 1000;
+const SHIFTS = [
+  [-1, "−1 day"],
+  [1, "+1 day"],
+  [7, "+7 days"],
+] as const;
 
 /**
  * A catalogue-driven editor for an ordered rule list, with a live preview of
@@ -60,7 +64,7 @@ export function WorkflowBuilder<Data>({
   });
   const { check, targets, target, result, evaluated, stale } = preview;
 
-  const formatValue = (fact: ReturnType<typeof factDef>, v: unknown) =>
+  const formatValue = (fact: FactDef | undefined, v: unknown) =>
     target?.formatFact && fact
       ? target.formatFact(fact.id, v as never)
       : formatFactValue(fact, v as never);
@@ -140,11 +144,11 @@ export function WorkflowBuilder<Data>({
             <p className="text-sm" aria-live="polite">
               {errorCount === 0
                 ? "No errors"
-                : `${errorCount} error${errorCount === 1 ? "" : "s"}`}
+                : withUnit(String(errorCount), errorCount, "errors")}
               {", "}
               {warningCount === 0
                 ? "no warnings"
-                : `${warningCount} warning${warningCount === 1 ? "" : "s"}`}
+                : withUnit(String(warningCount), warningCount, "warnings")}
             </p>
           </div>
         </Card.Content>
@@ -188,9 +192,7 @@ export function WorkflowBuilder<Data>({
               childLabels={target?.childLabels ?? {}}
               formatValue={formatValue}
               highlighted={highlight === rule.id}
-              onChange={(next) =>
-                onChange(updateRule(value, index, () => next))
-              }
+              onChange={(next) => onChange(replaceRule(value, index, next))}
               onMove={(to) => onChange(moveRule(value, index, to))}
               onDuplicate={() => onChange(duplicateRule(value, index))}
               onRemove={() => onChange(removeRule(value, index))}
@@ -262,33 +264,20 @@ export function WorkflowBuilder<Data>({
                 {new Date(now).toUTCString()}
               </span>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onPress={() =>
-                    setNow(new Date(Date.parse(now) - DAY).toISOString())
-                  }
-                >
-                  −1 day
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onPress={() =>
-                    setNow(new Date(Date.parse(now) + DAY).toISOString())
-                  }
-                >
-                  +1 day
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onPress={() =>
-                    setNow(new Date(Date.parse(now) + 7 * DAY).toISOString())
-                  }
-                >
-                  +7 days
-                </Button>
+                {SHIFTS.map(([days, label]) => (
+                  <Button
+                    key={days}
+                    size="sm"
+                    variant="secondary"
+                    onPress={() =>
+                      setNow(
+                        new Date(Date.parse(now) + days * DAY).toISOString(),
+                      )
+                    }
+                  >
+                    {label}
+                  </Button>
+                ))}
                 {now !== startNow && (
                   <Button
                     size="sm"

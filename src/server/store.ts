@@ -1,4 +1,5 @@
 import {
+  access,
   mkdir,
   readdir,
   readFile,
@@ -9,6 +10,8 @@ import {
 import { join } from "node:path";
 import {
   checkWorkflow,
+  type Diagnostic,
+  SLUG_PATTERN,
   serializeWorkflow,
   type Workflow,
 } from "@wb/workflow-engine";
@@ -65,7 +68,7 @@ const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await readFile(path);
+    await access(path);
     return true;
   } catch {
     return false;
@@ -216,16 +219,14 @@ export async function transactSubscription<T>(
 // ---------------------------------------------------------------------------
 
 export class InvalidWorkflowError extends Error {
-  constructor(
-    readonly diagnostics: ReturnType<typeof checkWorkflow>["diagnostics"],
-  ) {
+  constructor(readonly diagnostics: Diagnostic[]) {
     super("The workflow has errors.");
   }
 }
 
 export interface BrokenWorkflowFile {
   file: string;
-  diagnostics: ReturnType<typeof checkWorkflow>["diagnostics"];
+  diagnostics: Diagnostic[];
 }
 
 /**
@@ -260,7 +261,7 @@ export async function loadWorkflows(): Promise<{
       continue;
     }
     const result = checkWorkflow(doc, subscriptionCatalogue);
-    if (result.ok && result.workflow) workflows.push(result.workflow);
+    if (result.ok) workflows.push(result.workflow);
     else broken.push({ file, diagnostics: result.diagnostics });
   }
   // Published first, then by name.
@@ -272,12 +273,34 @@ export async function loadWorkflows(): Promise<{
   return { workflows, broken };
 }
 
+/** Every id with a stored file, including files that fail to load. */
+export async function storedWorkflowIds(): Promise<Set<string>> {
+  await ensureState();
+  return new Set(
+    (await readdir(workflowsDir()))
+      .filter((n) => n.endsWith(".json"))
+      .map((n) => n.slice(0, -".json".length)),
+  );
+}
+
 export async function listWorkflows(): Promise<Workflow[]> {
   return (await loadWorkflows()).workflows;
 }
 
+const SLUG = new RegExp(SLUG_PATTERN);
+
+/** One workflow, read from its own file (`saveWorkflow` names files by id). */
 export async function getWorkflow(id: string): Promise<Workflow | undefined> {
-  return (await listWorkflows()).find((w) => w.id === id);
+  if (!SLUG.test(id)) return undefined;
+  await ensureState();
+  let doc: unknown;
+  try {
+    doc = await readJson<unknown>(join(workflowsDir(), `${id}.json`));
+  } catch {
+    return undefined;
+  }
+  const result = checkWorkflow(doc, subscriptionCatalogue);
+  return result.ok && result.workflow.id === id ? result.workflow : undefined;
 }
 
 export async function getPublishedWorkflow(
@@ -296,12 +319,11 @@ export async function getPublishedWorkflow(
  */
 export async function saveWorkflow(doc: unknown): Promise<Workflow> {
   const result = checkWorkflow(doc, subscriptionCatalogue);
-  if (!result.ok || !result.workflow)
-    throw new InvalidWorkflowError(result.diagnostics);
+  if (!result.ok) throw new InvalidWorkflowError(result.diagnostics);
   const incoming = result.workflow;
   await ensureState();
   return serialised(async () => {
-    const stored = (await listWorkflows()).find((w) => w.id === incoming.id);
+    const stored = await getWorkflow(incoming.id);
     const workflow: Workflow = {
       ...incoming,
       status: stored?.status ?? "draft",
@@ -342,7 +364,7 @@ export class WorkflowInUseError extends Error {}
 export async function deleteWorkflow(id: string): Promise<void> {
   await ensureState();
   await serialised(async () => {
-    const workflow = (await listWorkflows()).find((w) => w.id === id);
+    const workflow = await getWorkflow(id);
     if (!workflow) throw new Error(`Unknown workflow ${id}.`);
     if (workflow.status === "published") {
       throw new WorkflowInUseError(

@@ -4,8 +4,13 @@ import { Button } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { formatDateTime } from "@/catalogue/format";
+import { addDays } from "@/domain/billing";
 
-const DAY = 24 * 60 * 60 * 1000;
+const SHIFTS = [
+  [-1, "−1 day"],
+  [1, "+1 day"],
+  [7, "+7 days"],
+] as const;
 
 /**
  * Moves the page's "now" so time-based rules (the renewal lock) can be shown
@@ -29,8 +34,7 @@ export function SimulateNow({
         iso ? `${pathname}?now=${encodeURIComponent(iso)}` : pathname,
       ),
     );
-  const shift = (days: number) =>
-    go(new Date(Date.parse(now) + days * DAY).toISOString());
+  const shift = (days: number) => go(addDays(new Date(now), days));
 
   return (
     <div className="flex flex-col gap-2">
@@ -40,30 +44,17 @@ export function SimulateNow({
         {simulated && <span className="text-muted"> (simulated)</span>}
       </span>
       <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          isDisabled={pending}
-          onPress={() => shift(-1)}
-        >
-          −1 day
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          isDisabled={pending}
-          onPress={() => shift(1)}
-        >
-          +1 day
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          isDisabled={pending}
-          onPress={() => shift(7)}
-        >
-          +7 days
-        </Button>
+        {SHIFTS.map(([days, label]) => (
+          <Button
+            key={days}
+            size="sm"
+            variant="secondary"
+            isDisabled={pending}
+            onPress={() => shift(days)}
+          >
+            {label}
+          </Button>
+        ))}
         {simulated && (
           <Button
             size="sm"

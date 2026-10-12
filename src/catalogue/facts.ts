@@ -1,5 +1,5 @@
 import type { EvaluationInput } from "@wb/workflow-engine";
-import { daysUntilRenewal, monthlySpend } from "@/domain/billing";
+import { daysUntilRenewal, monthlySpend, unitPrice } from "@/domain/billing";
 import type { Customer, Subscription } from "@/domain/types";
 
 /**
@@ -26,10 +26,7 @@ export function resolveSubscriptionFacts(
       id: item.id,
       facts: {
         "item.quantity": item.quantity,
-        "item.unitPrice":
-          item.quantity > 0
-            ? Math.round(item.totalPrice / item.quantity)
-            : null,
+        "item.unitPrice": item.quantity > 0 ? unitPrice(item) : null,
         "item.totalPrice": item.totalPrice,
       },
     })),

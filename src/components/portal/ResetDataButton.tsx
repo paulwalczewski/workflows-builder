@@ -4,7 +4,7 @@ import { Button, Tooltip } from "@heroui/react";
 import { useTransition } from "react";
 import { resetData } from "@/app/portal/actions";
 
-export const RESET_DATA_HINT =
+const RESET_DATA_HINT =
   "Restores customers, subscriptions and workflows to the base fixtures and clears the runtime log.";
 
 export function ResetDataButton({ size = "sm" }: { size?: "sm" | "md" }) {
@@ -19,10 +19,7 @@ export function ResetDataButton({ size = "sm" }: { size?: "sm" | "md" }) {
       >
         Reset data
       </Button>
-      <Tooltip.Content
-        showArrow
-        className="max-w-64 break-words [word-break:normal]"
-      >
+      <Tooltip.Content showArrow className="max-w-64">
         <Tooltip.Arrow />
         {RESET_DATA_HINT}
       </Tooltip.Content>

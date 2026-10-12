@@ -11,3 +11,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* HeroUI tooltips break text anywhere (break-all); wrap at words instead. */
+.tooltip {
+  word-break: normal;
+  overflow-wrap: break-word;
+}

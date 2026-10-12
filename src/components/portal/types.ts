@@ -1,3 +1,4 @@
+import type { ActionEntry } from "@/server/logger";
 import type { Run } from "@/server/run";
 
 /** One recent action attempt, trimmed for the debug panel. */
@@ -6,7 +7,7 @@ export interface RecentAction {
   at: string;
   capability: string;
   itemId?: string;
-  outcome: "performed" | "refused" | "invalid";
+  outcome: ActionEntry["outcome"];
   reason?: string;
 }
 

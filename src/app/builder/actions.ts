@@ -1,15 +1,19 @@
 "use server";
 
-import type { Diagnostic, Workflow } from "@wb/workflow-engine";
+import {
+  type Diagnostic,
+  uniqueSlug,
+  type Workflow,
+} from "@wb/workflow-engine";
 import { refresh } from "next/cache";
 import { TRIGGER_SUBSCRIPTION_OPENED } from "@/catalogue/catalogue";
 import {
   deleteWorkflow,
   getWorkflow,
   InvalidWorkflowError,
-  listWorkflows,
   publishWorkflow,
   saveWorkflow,
+  storedWorkflowIds,
   WorkflowInUseError,
 } from "@/server/store";
 
@@ -41,14 +45,7 @@ export async function publishWorkflowAction(id: unknown): Promise<void> {
 }
 
 async function freeId(base: string): Promise<string> {
-  const taken = new Set((await listWorkflows()).map((w) => w.id));
-  const slug =
-    base
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "workflow";
-  if (!taken.has(slug)) return slug;
-  for (let n = 2; ; n++) if (!taken.has(`${slug}-${n}`)) return `${slug}-${n}`;
+  return uniqueSlug(base, await storedWorkflowIds(), "workflow");
 }
 
 /** A new draft that starts with a Baseline rule, so it is explicit about the default. */

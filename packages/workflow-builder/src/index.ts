@@ -1,7 +1,6 @@
 export {
   addRule,
   duplicateRule,
-  formatFactValue,
   moveRule,
   removeRule,
   uniqueRuleId,

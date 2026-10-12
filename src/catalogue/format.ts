@@ -1,9 +1,7 @@
-import { type FactValue, withUnit } from "@wb/workflow-engine";
+import { type FactValue, factDef, formatFactValue } from "@wb/workflow-engine";
 import { formatMoney } from "@/domain/billing";
 import type { Subscription } from "@/domain/types";
 import { subscriptionCatalogue } from "./catalogue";
-
-const facts = new Map(subscriptionCatalogue.facts.map((f) => [f.id, f]));
 
 /** A fact value as a customer or merchant would read it. */
 export function formatFact(
@@ -11,19 +9,21 @@ export function formatFact(
   value: FactValue | undefined,
   currencyCode: string,
 ): string {
-  if (value === null || value === undefined) return "not set";
-  const fact = facts.get(factId);
-  if (fact?.type === "enum") {
-    return fact.options?.find((o) => o.value === value)?.label ?? String(value);
-  }
+  const fact = factDef(subscriptionCatalogue, factId);
+  // Money facts are stored in minor units (scale 100): show them as currency.
   if (typeof value === "number" && fact?.scale === 100) {
     return formatMoney(value, currencyCode);
   }
-  if (typeof value === "boolean") return value ? "yes" : "no";
-  return typeof value === "number"
-    ? withUnit(String(value), value, fact?.unit)
-    : String(value);
+  return formatFactValue(fact, value);
 }
+
+/** How each subscription status is labelled and coloured in the portal. */
+export const STATUS_CHIP = {
+  active: { label: "Active", color: "success" },
+  paused: { label: "Paused", color: "warning" },
+  canceled: { label: "Canceled", color: "default" },
+  failed: { label: "Payment failed", color: "danger" },
+} as const;
 
 /** A condition's expected value, formatted like the fact it compares. */
 export function formatExpected(

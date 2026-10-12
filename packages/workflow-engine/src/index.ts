@@ -17,6 +17,13 @@ export {
   withUnit,
 } from "./conditions";
 export { type EvaluateArgs, evaluate } from "./evaluate";
+export {
+  capabilityLabel,
+  factDef,
+  formatFactValue,
+  limitLabel,
+  uniqueSlug,
+} from "./labels";
 export { buildCatalogueSchema } from "./schema/catalogue-schema";
 export {
   CAPABILITY_PATTERN,

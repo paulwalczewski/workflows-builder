@@ -3,12 +3,11 @@ import {
   type Condition,
   type Effect,
   type FactDef,
-  type FactValue,
   OPERATORS_BY_TYPE,
   type Operator,
   type Rule,
+  uniqueSlug,
   type Workflow,
-  withUnit,
 } from "@wb/workflow-engine";
 
 /**
@@ -17,42 +16,35 @@ import {
  */
 
 export function uniqueRuleId(workflow: Workflow, base = "rule"): string {
-  const taken = new Set(workflow.rules.map((r) => r.id));
-  const slug =
-    base
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "rule";
-  if (!taken.has(slug)) return slug;
-  for (let n = 2; ; n++) {
-    if (!taken.has(`${slug}-${n}`)) return `${slug}-${n}`;
-  }
+  return uniqueSlug(base, new Set(workflow.rules.map((r) => r.id)), "rule");
 }
 
-export function addRule(
-  workflow: Workflow,
-  at = workflow.rules.length,
-): Workflow {
+export function addRule(workflow: Workflow): Workflow {
   const rule: Rule = {
     id: uniqueRuleId(workflow),
     name: "New rule",
     when: { match: "all", conditions: [] },
     then: [],
   };
-  const rules = [...workflow.rules];
-  rules.splice(at, 0, rule);
-  return { ...workflow, rules };
+  return { ...workflow, rules: [...workflow.rules, rule] };
 }
 
-export function updateRule(
+export function replaceRule(
   workflow: Workflow,
   index: number,
-  change: (rule: Rule) => Rule,
+  rule: Rule,
 ): Workflow {
-  return {
-    ...workflow,
-    rules: workflow.rules.map((rule, i) => (i === index ? change(rule) : rule)),
-  };
+  return { ...workflow, rules: replaceAt(workflow.rules, index, rule) };
+}
+
+/** `list` with the entry at `index` swapped for `value`. */
+export function replaceAt<T>(list: readonly T[], index: number, value: T): T[] {
+  return list.map((entry, i) => (i === index ? value : entry));
+}
+
+/** `list` without the entry at `index`. */
+export function removeAt<T>(list: readonly T[], index: number): T[] {
+  return list.filter((_, i) => i !== index);
 }
 
 export function moveRule(
@@ -68,7 +60,7 @@ export function moveRule(
 }
 
 export function removeRule(workflow: Workflow, index: number): Workflow {
-  return { ...workflow, rules: workflow.rules.filter((_, i) => i !== index) };
+  return { ...workflow, rules: removeAt(workflow.rules, index) };
 }
 
 export function duplicateRule(workflow: Workflow, index: number): Workflow {
@@ -135,37 +127,4 @@ export function toDisplay(value: number, scale = 1): number {
 /** The figure a merchant typed back to the stored integer. */
 export function fromDisplay(value: number, scale = 1): number {
   return Math.round(value * scale);
-}
-
-export function formatFactValue(
-  fact: FactDef | undefined,
-  value: FactValue | undefined,
-): string {
-  if (value === null || value === undefined) return "not set";
-  if (!fact) return String(value);
-  if (fact.type === "enum") {
-    return fact.options?.find((o) => o.value === value)?.label ?? String(value);
-  }
-  if (fact.type === "boolean") return value ? "yes" : "no";
-  if (typeof value === "number") {
-    const shown = toDisplay(value, fact.scale).toLocaleString("en", {
-      maximumFractionDigits: 2,
-    });
-    return withUnit(shown, toDisplay(value, fact.scale), fact.unit);
-  }
-  return String(value);
-}
-
-export function capabilityLabel(catalogue: Catalogue, pattern: string): string {
-  if (pattern === "*") return "Everything";
-  if (pattern.endsWith(".*")) return `All ${pattern.slice(0, -2)} capabilities`;
-  return catalogue.capabilities.find((c) => c.id === pattern)?.label ?? pattern;
-}
-
-export function limitLabel(catalogue: Catalogue, id: string): string {
-  return catalogue.limits.find((l) => l.id === id)?.label ?? id;
-}
-
-export function factDef(catalogue: Catalogue, id: string): FactDef | undefined {
-  return catalogue.facts.find((f) => f.id === id);
 }

@@ -58,12 +58,19 @@ export async function clearLog(): Promise<void> {
   await rm(logFile(), { force: true });
 }
 
-/** The most recent entries, newest first, optionally for one subscription. */
+/**
+ * The most recent entries, newest first, optionally only one kind, customer
+ * or subscription. `limit` counts entries after filtering.
+ */
 export async function readLog({
+  customerId,
   subscriptionId,
+  kind,
   limit = 50,
 }: {
+  customerId?: string;
   subscriptionId?: string;
+  kind?: LogEntry["kind"];
   limit?: number;
 } = {}): Promise<LogEntry[]> {
   let text: string;
@@ -77,7 +84,11 @@ export async function readLog({
   for (let i = lines.length - 1; i >= 0 && entries.length < limit; i--) {
     try {
       const entry = JSON.parse(lines[i]) as LogEntry;
-      if (!subscriptionId || entry.subscriptionId === subscriptionId) {
+      if (
+        (!customerId || entry.customerId === customerId) &&
+        (!subscriptionId || entry.subscriptionId === subscriptionId) &&
+        (!kind || entry.kind === kind)
+      ) {
         entries.push(entry);
       }
     } catch {

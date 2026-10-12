@@ -1,13 +1,14 @@
-import { Alert } from "@heroui/react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { Notice } from "@/components/Notice";
 import { PortalView } from "@/components/portal/PortalView";
 import type { PortalRun, RecentAction } from "@/components/portal/types";
+import type { Product } from "@/domain/types";
 import { parseNow } from "@/lib/now";
-import { readLog } from "@/server/logger";
-import { RunError, runAndLog } from "@/server/run";
-import { getCustomer, listProducts, listSubscriptions } from "@/server/store";
+import { type ActionEntry, readLog } from "@/server/logger";
+import { loadRunContext, logEvaluation, RunError, runFor } from "@/server/run";
+import { getCustomer, listSubscriptions } from "@/server/store";
 
 export default function CustomerPortalPage({
   params,
@@ -37,29 +38,29 @@ async function CustomerPortal({
   );
 
   let runs: PortalRun[];
+  let products: Product[];
   try {
     // Opening the portal is the trigger: the published workflow runs for
     // every subscription on the page, and each run is logged.
+    const context = await loadRunContext(customer.id);
+    products = context.products;
+    const actions = (
+      await readLog({ kind: "action", customerId: customer.id, limit: 50 })
+    ).filter((e): e is ActionEntry => e.kind === "action");
     runs = await Promise.all(
       subscriptions.map(async (subscription) => {
-        const {
-          customer: _,
-          products: __,
-          ...run
-        } = await runAndLog(subscription.id, now);
-        return { ...run, recent: await recentActions(subscription.id) };
+        const run = await runFor(subscription, now, context);
+        await logEvaluation(run);
+        const { customer: _, products: __, ...rest } = run;
+        return { ...rest, recent: recentActions(actions, subscription.id) };
       }),
     );
   } catch (error) {
     if (!(error instanceof RunError)) throw error;
     return (
-      <Alert status="danger">
-        <Alert.Indicator />
-        <Alert.Content>
-          <Alert.Title>The portal cannot evaluate subscriptions</Alert.Title>
-          <Alert.Description>{error.message}</Alert.Description>
-        </Alert.Content>
-      </Alert>
+      <Notice status="danger" title="The portal cannot evaluate subscriptions">
+        {error.message}
+      </Notice>
     );
   }
 
@@ -67,17 +68,19 @@ async function CustomerPortal({
     <PortalView
       customer={customer}
       runs={runs}
-      products={await listProducts()}
+      products={products}
       now={now.toISOString()}
       simulated={simulated !== null}
     />
   );
 }
 
-async function recentActions(subscriptionId: string): Promise<RecentAction[]> {
-  const entries = await readLog({ subscriptionId, limit: 40 });
-  return entries
-    .filter((e) => e.kind === "action")
+function recentActions(
+  actions: ActionEntry[],
+  subscriptionId: string,
+): RecentAction[] {
+  return actions
+    .filter((e) => e.subscriptionId === subscriptionId)
     .slice(0, 8)
     .map((e) => ({
       runId: e.runId,

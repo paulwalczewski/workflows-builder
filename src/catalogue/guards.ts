@@ -1,15 +1,7 @@
 import type { CapabilityDecision, EvaluationResult } from "@wb/workflow-engine";
+import { addableProducts } from "@/domain/transitions";
 import type { Product, Subscription, SubscriptionItem } from "@/domain/types";
 import { CAPABILITIES, LIMITS } from "./catalogue";
-
-/**
- * Guards are this product's fixed rules, applied after the workflow. A
- * merchant cannot grant past them: a capability the workflow allows but a
- * guard blocks is shown disabled with the guard's reason.
- */
-export interface Guard {
-  reason: string;
-}
 
 export type Availability = "enabled" | "disabled" | "hidden";
 
@@ -22,7 +14,6 @@ export interface CapabilityView {
   reason?: string;
   source: Source;
   decision: CapabilityDecision;
-  guard?: Guard;
 }
 
 export interface SubscriptionView {
@@ -34,49 +25,50 @@ export interface SubscriptionView {
   };
 }
 
+/**
+ * Guards are this product's fixed rules, applied after the workflow. A
+ * merchant cannot grant past them: a capability the workflow allows but a
+ * guard blocks is shown disabled with the guard's reason, returned here.
+ */
 export function guardFor(
   capability: string,
   subscription: Subscription,
   products: Product[],
   item?: SubscriptionItem,
-): Guard | null {
+): string | null {
   const { status } = subscription;
-  const blocked = (reason: string): Guard => ({ reason });
-
   switch (capability) {
     case CAPABILITIES.pause:
       return status === "active"
         ? null
-        : blocked("Only active subscriptions can be paused.");
+        : "Only active subscriptions can be paused.";
     case CAPABILITIES.resume:
       return status === "paused"
         ? null
-        : blocked("Only paused subscriptions can be resumed.");
+        : "Only paused subscriptions can be resumed.";
     case CAPABILITIES.reactivate:
       return status === "canceled"
         ? null
-        : blocked("Only canceled subscriptions can be reactivated.");
+        : "Only canceled subscriptions can be reactivated.";
     case CAPABILITIES.cancel:
       return status === "canceled"
-        ? blocked("This subscription is already canceled.")
+        ? "This subscription is already canceled."
         : null;
-    case CAPABILITIES.addItem: {
+    case CAPABILITIES.addItem:
       if (status === "canceled")
-        return blocked("Canceled subscriptions cannot be changed.");
-      const taken = new Set(subscription.items.map((i) => i.productId));
-      return products.some((p) => !taken.has(p.id))
+        return "Canceled subscriptions cannot be changed.";
+      return addableProducts(subscription, products).length > 0
         ? null
-        : blocked("Every product is already in this subscription.");
-    }
+        : "Every product is already in this subscription.";
     case CAPABILITIES.removeItem:
       if (status === "canceled")
-        return blocked("Canceled subscriptions cannot be changed.");
+        return "Canceled subscriptions cannot be changed.";
       return subscription.items.length <= 1 && item
-        ? blocked("A subscription needs at least one item.")
+        ? "A subscription needs at least one item."
         : null;
     case CAPABILITIES.updateQuantity:
       return status === "canceled"
-        ? blocked("Canceled subscriptions cannot be changed.")
+        ? "Canceled subscriptions cannot be changed."
         : null;
     default:
       return null;
@@ -85,44 +77,24 @@ export function guardFor(
 
 function view(
   decision: CapabilityDecision,
-  guard: Guard | null,
+  guard: string | null,
   limitReason: string | null,
 ): CapabilityView {
-  const base = {
-    capability: decision.capability,
-    decision,
-    ...(guard && { guard }),
-  };
+  const { capability } = decision;
   if (!decision.allowed && !decision.reason) {
-    return { ...base, availability: "hidden", source: "default" };
+    return { capability, decision, availability: "hidden", source: "default" };
   }
   // A guard states a fact about the subscription ("already canceled"), which
   // is truer than any rule's reason, so it wins over a rule's deny.
-  if (guard) {
-    return {
-      ...base,
-      availability: "disabled",
-      reason: guard.reason,
-      source: "guard",
-    };
+  const [source, reason]: [Source, string | null | undefined] = guard
+    ? ["guard", guard]
+    : !decision.allowed
+      ? ["rule", decision.reason]
+      : ["limit", limitReason];
+  if (reason) {
+    return { capability, decision, availability: "disabled", reason, source };
   }
-  if (!decision.allowed) {
-    return {
-      ...base,
-      availability: "disabled",
-      reason: decision.reason,
-      source: "rule",
-    };
-  }
-  if (limitReason) {
-    return {
-      ...base,
-      availability: "disabled",
-      reason: limitReason,
-      source: "limit",
-    };
-  }
-  return { ...base, availability: "enabled", source: "rule" };
+  return { capability, decision, availability: "enabled", source: "rule" };
 }
 
 /**

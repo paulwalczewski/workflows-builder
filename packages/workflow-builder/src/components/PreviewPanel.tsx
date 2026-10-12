@@ -1,14 +1,16 @@
 "use client";
 
 import { Button, Chip } from "@heroui/react";
-import type {
-  CapabilityDecision,
-  Catalogue,
-  EvaluationResult,
-  LimitDecision,
-  Workflow,
+import {
+  type CapabilityDecision,
+  type Catalogue,
+  capabilityLabel,
+  type EffectRef,
+  type EvaluationResult,
+  type LimitDecision,
+  limitLabel,
+  type Workflow,
 } from "@wb/workflow-engine";
-import { capabilityLabel, limitLabel } from "../model";
 import type { PreviewTarget } from "../types";
 
 interface Props {
@@ -40,7 +42,7 @@ export function PreviewPanel({
     );
   }
   const childTerm = catalogue.terms?.child ?? "child";
-  const ruleRef = (decidedBy: { ruleId: string; ruleIndex: number } | null) =>
+  const ruleRef = (decidedBy: EffectRef | null) =>
     decidedBy ? (
       <Button
         size="sm"
@@ -119,7 +121,7 @@ function Decisions({
 }: {
   catalogue: Catalogue;
   decisions: CapabilityDecision[];
-  ruleRef: (d: { ruleId: string; ruleIndex: number } | null) => React.ReactNode;
+  ruleRef: (d: EffectRef | null) => React.ReactNode;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -158,7 +160,7 @@ function Limits({
 }: {
   catalogue: Catalogue;
   limits: LimitDecision[];
-  ruleRef: (d: { ruleId: string; ruleIndex: number } | null) => React.ReactNode;
+  ruleRef: (d: EffectRef | null) => React.ReactNode;
 }) {
   if (limits.length === 0) return null;
   return (

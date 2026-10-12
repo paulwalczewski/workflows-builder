@@ -1,7 +1,7 @@
 "use client";
 
-import { Alert, Button, Card, Chip, Dropdown, Label } from "@heroui/react";
-import type { Workflow } from "@wb/workflow-engine";
+import { Button, Card, Chip, Dropdown, Label } from "@heroui/react";
+import { type Workflow, withUnit } from "@wb/workflow-engine";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -11,6 +11,7 @@ import {
   duplicateWorkflowAction,
   publishWorkflowAction,
 } from "@/app/builder/actions";
+import { Notice } from "@/components/Notice";
 import { ResetDataButton } from "@/components/portal/ResetDataButton";
 import type { BrokenWorkflowFile } from "@/server/store";
 import { downloadWorkflow } from "./download";
@@ -68,14 +69,7 @@ export function WorkflowList({ workflows, broken }: Props) {
         <ResetDataButton size="md" />
       </div>
 
-      {error && (
-        <Alert status="danger">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>{error}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {error && <Notice status="danger">{error}</Notice>}
 
       <ul className="grid gap-4 md:grid-cols-2">
         {workflows.map((workflow) => {
@@ -163,9 +157,11 @@ export function WorkflowList({ workflows, broken }: Props) {
                   </Card.Description>
                 </Card.Header>
                 <Card.Content className="text-sm text-muted">
-                  {workflow.rules.length === 1
-                    ? "1 rule"
-                    : `${workflow.rules.length} rules`}
+                  {withUnit(
+                    String(workflow.rules.length),
+                    workflow.rules.length,
+                    "rules",
+                  )}
                 </Card.Content>
                 {confirmDelete === workflow.id && (
                   <Card.Footer className="relative z-10 flex flex-wrap items-center gap-2 rounded-2xl bg-danger-soft p-3">
@@ -205,23 +201,18 @@ export function WorkflowList({ workflows, broken }: Props) {
       </ul>
 
       {broken.length > 0 && (
-        <Alert status="warning">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>
-              Some stored workflow files could not be loaded
-            </Alert.Title>
-            <Alert.Description>
-              <ul className="list-disc pl-4">
-                {broken.map((b) => (
-                  <li key={b.file}>
-                    <code>{b.file}</code>: {b.diagnostics[0]?.message}
-                  </li>
-                ))}
-              </ul>
-            </Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <Notice
+          status="warning"
+          title="Some stored workflow files could not be loaded"
+        >
+          <ul className="list-disc pl-4">
+            {broken.map((b) => (
+              <li key={b.file}>
+                <code>{b.file}</code>: {b.diagnostics[0]?.message}
+              </li>
+            ))}
+          </ul>
+        </Notice>
       )}
     </div>
   );

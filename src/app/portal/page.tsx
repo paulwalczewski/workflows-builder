@@ -1,8 +1,9 @@
 import { Card, Chip } from "@heroui/react";
+import { withUnit } from "@wb/workflow-engine";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { subscriptionTitle } from "@/catalogue/format";
+import { STATUS_CHIP, subscriptionTitle } from "@/catalogue/format";
 import { ResetDataButton } from "@/components/portal/ResetDataButton";
 import { listCustomers, listSubscriptions } from "@/server/store";
 
@@ -27,13 +28,6 @@ export default function PortalPage() {
     </div>
   );
 }
-
-const statusColor = {
-  active: "success",
-  paused: "warning",
-  canceled: "default",
-  failed: "danger",
-} as const;
 
 async function CustomerList() {
   await connection();
@@ -65,9 +59,7 @@ async function CustomerList() {
                     </Chip>
                   </div>
                   <Card.Description>
-                    {own.length === 1
-                      ? "1 subscription"
-                      : `${own.length} subscriptions`}
+                    {withUnit(String(own.length), own.length, "subscriptions")}
                   </Card.Description>
                 </Card.Header>
                 <Card.Content>
@@ -79,11 +71,11 @@ async function CustomerList() {
                       >
                         <span className="truncate">{subscriptionTitle(s)}</span>
                         <Chip
-                          color={statusColor[s.status]}
+                          color={STATUS_CHIP[s.status].color}
                           size="sm"
                           variant="soft"
                         >
-                          {s.status}
+                          {STATUS_CHIP[s.status].label}
                         </Chip>
                       </li>
                     ))}

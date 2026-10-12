@@ -95,6 +95,11 @@ export const workflowSchema = {
       items: { type: "string", pattern: CAPABILITY_PATTERN },
     },
     effect: {
+      // The discriminator makes Ajv check only the branch named by `type`, so
+      // a bad effect reports its own problem, not why every branch failed.
+      type: "object",
+      required: ["type"],
+      discriminator: { propertyName: "type" },
       oneOf: [
         {
           type: "object",

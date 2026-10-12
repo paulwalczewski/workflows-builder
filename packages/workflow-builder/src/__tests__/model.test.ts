@@ -1,11 +1,14 @@
 /** @jest-environment node */
-import type { Catalogue, Workflow } from "@wb/workflow-engine";
+import {
+  type Catalogue,
+  formatFactValue,
+  type Workflow,
+} from "@wb/workflow-engine";
 import {
   addRule,
   changeOperator,
   defaultCondition,
   duplicateRule,
-  formatFactValue,
   fromDisplay,
   moveRule,
   removeRule,

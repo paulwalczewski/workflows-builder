@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Button,
   Card,
   Chip,
@@ -11,29 +10,34 @@ import {
   Select,
   TextField,
 } from "@heroui/react";
+import { withUnit } from "@wb/workflow-engine";
 import { useState, useTransition } from "react";
 import { submitAction } from "@/app/portal/actions";
 import { CAPABILITIES } from "@/catalogue/catalogue";
-import { formatDate, subscriptionTitle } from "@/catalogue/format";
-import { describePolicy, formatMoney, monthlySpend } from "@/domain/billing";
-import { MAX_QUANTITY, type SubscriptionAction } from "@/domain/transitions";
+import { formatDate, STATUS_CHIP, subscriptionTitle } from "@/catalogue/format";
+import { Notice } from "@/components/Notice";
+import {
+  describePolicy,
+  formatMoney,
+  monthlySpend,
+  unitPrice,
+} from "@/domain/billing";
+import {
+  addableProducts,
+  quantityCeiling,
+  type SubscriptionAction,
+} from "@/domain/transitions";
 import type { Product } from "@/domain/types";
+import type { ActionOutcome } from "@/server/perform";
 import { GatedButton } from "./GatedButton";
 import type { PortalRun } from "./types";
 
-const statusColor = {
-  active: "success",
-  paused: "warning",
-  canceled: "default",
-  failed: "danger",
-} as const;
-
-const statusLabel = {
-  active: "Active",
-  paused: "Paused",
-  canceled: "Canceled",
-  failed: "Payment failed",
-} as const;
+/** Lifecycle actions that apply directly, without confirmation. */
+const LIFECYCLE = [
+  [CAPABILITIES.pause, "Pause"],
+  [CAPABILITIES.resume, "Resume"],
+  [CAPABILITIES.reactivate, "Reactivate"],
+] as const;
 
 interface Props {
   run: PortalRun;
@@ -51,10 +55,7 @@ export function SubscriptionCard({
 }: Props) {
   const { subscription, view } = run;
   const [pending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState<{
-    ok: boolean;
-    text: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<ActionOutcome | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [editingCard, setEditingCard] = useState(false);
   const [brand, setBrand] = useState("Visa");
@@ -68,11 +69,7 @@ export function SubscriptionCard({
         action,
         simulatedNow ?? undefined,
       );
-      setFeedback(
-        outcome.ok
-          ? { ok: true, text: outcome.message }
-          : { ok: false, text: outcome.reason },
-      );
+      setFeedback(outcome);
       if (outcome.ok) {
         setEditingCard(false);
         setLast4("");
@@ -83,11 +80,7 @@ export function SubscriptionCard({
   const sub = (capability: string) => view.capabilities[capability];
   const currency = subscription.currencyCode;
   const days = run.input.facts["subscription.daysUntilRenewal"];
-  const addable = products.filter(
-    (p) =>
-      p.currencyCode === currency &&
-      !subscription.items.some((i) => i.productId === p.id),
-  );
+  const addable = addableProducts(subscription, products);
   const addView = sub(CAPABILITIES.addItem);
 
   return (
@@ -97,14 +90,14 @@ export function SubscriptionCard({
           <Card.Title className="text-lg">
             {subscriptionTitle(subscription)}
           </Card.Title>
-          <Chip color={statusColor[subscription.status]} variant="soft">
-            {statusLabel[subscription.status]}
+          <Chip color={STATUS_CHIP[subscription.status].color} variant="soft">
+            {STATUS_CHIP[subscription.status].label}
           </Chip>
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
           <Meta label="Next billing">
             {subscription.nextBillingDate
-              ? `${formatDate(subscription.nextBillingDate)}${typeof days === "number" ? ` (${days <= 0 ? "due" : `in ${days} day${days === 1 ? "" : "s"}`})` : ""}`
+              ? `${formatDate(subscription.nextBillingDate)}${typeof days === "number" ? ` (${days <= 0 ? "due" : `in ${withUnit(String(days), days, "days")}`})` : ""}`
               : "Not scheduled"}
           </Meta>
           <Meta label="Billing">
@@ -147,33 +140,18 @@ export function SubscriptionCard({
             aria-label="Subscription actions"
             className="flex flex-wrap items-center gap-2"
           >
-            <GatedButton
-              view={sub(CAPABILITIES.pause)}
-              size="sm"
-              variant="secondary"
-              busy={pending}
-              onPress={() => act({ capability: CAPABILITIES.pause })}
-            >
-              Pause
-            </GatedButton>
-            <GatedButton
-              view={sub(CAPABILITIES.resume)}
-              size="sm"
-              variant="secondary"
-              busy={pending}
-              onPress={() => act({ capability: CAPABILITIES.resume })}
-            >
-              Resume
-            </GatedButton>
-            <GatedButton
-              view={sub(CAPABILITIES.reactivate)}
-              size="sm"
-              variant="secondary"
-              busy={pending}
-              onPress={() => act({ capability: CAPABILITIES.reactivate })}
-            >
-              Reactivate
-            </GatedButton>
+            {LIFECYCLE.map(([capability, label]) => (
+              <GatedButton
+                key={capability}
+                view={sub(capability)}
+                size="sm"
+                variant="secondary"
+                busy={pending}
+                onPress={() => act({ capability })}
+              >
+                {label}
+              </GatedButton>
+            ))}
             <GatedButton
               view={sub(CAPABILITIES.cancel)}
               size="sm"
@@ -192,10 +170,13 @@ export function SubscriptionCard({
             {subscription.items.map((item) => {
               const views = view.items[item.id] ?? {};
               const quantity = views[CAPABILITIES.updateQuantity];
-              const max = Math.min(
-                view.limits.maxQuantity[item.id] ?? MAX_QUANTITY,
-                MAX_QUANTITY,
-              );
+              const max = quantityCeiling(view.limits.maxQuantity[item.id]);
+              const setQuantity = (quantity: number) =>
+                act({
+                  capability: CAPABILITIES.updateQuantity,
+                  itemId: item.id,
+                  quantity,
+                });
               return (
                 <li
                   key={item.id}
@@ -204,11 +185,7 @@ export function SubscriptionCard({
                   <div className="flex min-w-0 flex-col">
                     <span className="font-medium">{item.title}</span>
                     <span className="text-sm text-muted">
-                      {item.quantity} ×{" "}
-                      {formatMoney(
-                        Math.round(item.totalPrice / item.quantity),
-                        currency,
-                      )}{" "}
+                      {item.quantity} × {formatMoney(unitPrice(item), currency)}{" "}
                       = {formatMoney(item.totalPrice, currency)} per cycle
                     </span>
                   </div>
@@ -225,13 +202,7 @@ export function SubscriptionCard({
                           ? "Remove the item instead of going below 1."
                           : null
                       }
-                      onPress={() =>
-                        act({
-                          capability: CAPABILITIES.updateQuantity,
-                          itemId: item.id,
-                          quantity: item.quantity - 1,
-                        })
-                      }
+                      onPress={() => setQuantity(item.quantity - 1)}
                     >
                       −
                     </GatedButton>
@@ -250,13 +221,7 @@ export function SubscriptionCard({
                       localReason={
                         item.quantity >= max ? `Up to ${max} per item.` : null
                       }
-                      onPress={() =>
-                        act({
-                          capability: CAPABILITIES.updateQuantity,
-                          itemId: item.id,
-                          quantity: item.quantity + 1,
-                        })
-                      }
+                      onPress={() => setQuantity(item.quantity + 1)}
                     >
                       +
                     </GatedButton>
@@ -403,12 +368,9 @@ export function SubscriptionCard({
 
         <output aria-live="polite" className="block">
           {feedback && (
-            <Alert status={feedback.ok ? "success" : "danger"}>
-              <Alert.Indicator />
-              <Alert.Content>
-                <Alert.Description>{feedback.text}</Alert.Description>
-              </Alert.Content>
-            </Alert>
+            <Notice status={feedback.ok ? "success" : "danger"}>
+              {feedback.ok ? feedback.message : feedback.reason}
+            </Notice>
           )}
         </output>
       </Card.Content>

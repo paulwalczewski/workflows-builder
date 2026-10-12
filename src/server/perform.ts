@@ -1,7 +1,7 @@
-import { capabilityView } from "@/catalogue/guards";
+import { type CapabilityView, capabilityView } from "@/catalogue/guards";
 import { applyAction, type SubscriptionAction } from "@/domain/transitions";
 import { type ActionEntry, writeLog } from "./logger";
-import { type Run, RunError, runFor } from "./run";
+import { type Run, RunError, runFor, runLogFields } from "./run";
 import { transactSubscription } from "./store";
 
 export interface ActionRequest {
@@ -15,7 +15,12 @@ export type ActionOutcome =
 
 type Verdict = {
   outcome: ActionOutcome;
-  log?: { run: Run; kind: ActionEntry["outcome"]; reason?: string };
+  log: {
+    run: Run;
+    kind: ActionEntry["outcome"];
+    reason?: string;
+    decision?: CapabilityView;
+  };
 };
 
 /**
@@ -45,7 +50,7 @@ export async function performAction(
           return {
             result: {
               outcome: { ok: false, reason, runId: run.runId },
-              log: { run, kind: "refused", reason },
+              log: { run, kind: "refused", reason, decision: view },
             },
           };
         }
@@ -79,26 +84,16 @@ export async function performAction(
     return { ok: false, reason: `Unknown subscription ${subscriptionId}.` };
   }
 
-  if (verdict.log) {
-    const { run, kind, reason } = verdict.log;
-    await writeLog({
-      kind: "action",
-      runId: run.runId,
-      at: new Date().toISOString(),
-      now: run.now,
-      workflowId: run.workflow.id,
-      workflowName: run.workflow.name,
-      customerId: run.customer.id,
-      subscriptionId,
-      action: { capability, ...(itemId && { itemId }), payload },
-      outcome: kind,
-      facts: run.input,
-      result: run.result,
-      ...(reason && { reason }),
-      ...(kind === "refused" && {
-        decision: capabilityView(run.view, capability, itemId),
-      }),
-    });
-  }
+  const { run, kind, reason, decision } = verdict.log;
+  await writeLog({
+    kind: "action",
+    ...runLogFields(run),
+    action: { capability, ...(itemId && { itemId }), payload },
+    outcome: kind,
+    facts: run.input,
+    result: run.result,
+    ...(reason && { reason }),
+    ...(decision && { decision }),
+  });
   return verdict.outcome;
 }
